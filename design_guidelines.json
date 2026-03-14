@@ -1,0 +1,160 @@
+{
+  "project_name": "Restaurant BÉNI - Elegant Redesign",
+  "brand_identity": {
+    "name": "BÉNI",
+    "tagline": "Food is Life",
+    "core_values": ["Passion", "Authenticity", "Elegance", "Warmth"],
+    "persona": "The 'E1' Anti-AI Designer - Dark Luxury Edition",
+    "tone": "Sophisticated, Intimate, Culinary-Focused"
+  },
+  "visual_style": {
+    "theme": "dark",
+    "lighting": "Cinematic/Moody",
+    "textures": ["Noise/Grain", "Marble", "Velvet"],
+    "glassmorphism": "Crystal Clear (High Blur, Low Opacity)",
+    "border_style": "1px solid rgba(255, 255, 255, 0.1)"
+  },
+  "colors": {
+    "palette": {
+      "background": {
+        "primary": "#0a0a0a",
+        "secondary": "#121212",
+        "tertiary": "#1a1a1a"
+      },
+      "text": {
+        "primary": "#f5f5f0",
+        "secondary": "#a3a3a3",
+        "accent": "#d4af37"
+      },
+      "accent": {
+        "gold": "#d4af37",
+        "deep_blue": "#0f172a",
+        "wine_red": "#4a0404"
+      },
+      "status": {
+        "success": "#10b981",
+        "error": "#ef4444",
+        "warning": "#f59e0b"
+      }
+    },
+    "gradients": {
+      "hero_overlay": "linear-gradient(to bottom, rgba(10,10,10,0) 0%, #0a0a0a 100%)",
+      "gold_shimmer": "linear-gradient(45deg, #d4af37 0%, #fcd34d 50%, #d4af37 100%)"
+    }
+  },
+  "typography": {
+    "font_families": {
+      "headings": "Playfair Display, serif",
+      "body": "Manrope, sans-serif",
+      "accent": "Cormorant Garamond, serif"
+    },
+    "scale": {
+      "h1": "text-5xl md:text-7xl font-medium tracking-tight leading-none",
+      "h2": "text-4xl md:text-5xl font-normal tracking-tight",
+      "h3": "text-2xl md:text-3xl font-light",
+      "body": "text-base md:text-lg font-light leading-relaxed",
+      "label": "text-xs uppercase tracking-[0.2em] font-bold text-accent-gold"
+    },
+    "weights": {
+      "light": 300,
+      "normal": 400,
+      "medium": 500,
+      "bold": 700
+    }
+  },
+  "spacing": {
+    "container_padding": "px-6 md:px-12 lg:px-24",
+    "section_gap": "py-24 md:py-32",
+    "element_gap": "gap-8"
+  },
+  "layout_strategies": {
+    "grid_system": "Bento Grid (Asymmetric)",
+    "alignment": "Left-aligned text, optically centered hero",
+    "mobile": "Single column, large touch targets (48px+)"
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-accent-gold text-black hover:bg-white transition-all duration-300 rounded-none px-8 py-3 uppercase tracking-widest text-xs font-bold",
+      "secondary": "border border-white/20 text-white hover:border-white hover:bg-white/5 transition-all duration-300 rounded-none px-8 py-3 uppercase tracking-widest text-xs",
+      "ghost": "text-white/60 hover:text-white transition-colors uppercase tracking-widest text-xs"
+    },
+    "cards": {
+      "style": "bg-white/5 border border-white/10 backdrop-blur-md rounded-none hover:border-accent-gold/50 transition-colors duration-300",
+      "padding": "p-8"
+    },
+    "inputs": {
+      "style": "bg-transparent border-b border-white/20 focus:border-accent-gold outline-none text-white placeholder-white/30 rounded-none px-0 py-4 transition-colors"
+    },
+    "navigation": {
+      "style": "fixed top-0 left-0 w-full z-50 bg-background/80 backdrop-blur-lg border-b border-white/5",
+      "link_style": "text-sm uppercase tracking-widest hover:text-accent-gold transition-colors"
+    }
+  },
+  "image_assets": {
+    "hero_background": {
+      "url": "https://images.unsplash.com/photo-1767277680127-dc94441d576c?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODl8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBlbGVnYW50JTIwcmVzdGF1cmFudCUyMGludGVyaW9yJTIwZGFyayUyMGxpZ2h0aW5nfGVufDB8fHx8MTc3MzUzMDQyMXww&ixlib=rb-4.1.0&q=85",
+      "alt": "Elegant dark restaurant interior with moody lighting",
+      "usage": "Hero section background with overlay"
+    },
+    "chef_portrait": {
+      "url": "https://images.unsplash.com/photo-1759521296013-559479e2a891?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzN8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBjaGVmJTIwcG9ydHJhaXQlMjBwcm9mZXNzaW9uYWwlMjBraXRjaGVufGVufDB8fHx8MTc3MzUzMDQyN3ww&ixlib=rb-4.1.0&q=85",
+      "alt": "Chef Stephano Crupi portrait",
+      "usage": "About section, Chef bio"
+    },
+    "food_plating": {
+      "url": "https://images.unsplash.com/photo-1764358868789-400fb3d39fb7?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NjZ8MHwxfHNlYXJjaHwxfHxnb3VybWV0JTIwcmVzdGF1cmFudCUyMGZvb2QlMjBwbGF0aW5nJTIwZGFyayUyMGVsZWdhbnR8ZW58MHx8fHwxNzczNTMwNDIwfDA&ixlib=rb-4.1.0&q=85",
+      "alt": "Gourmet dish presentation",
+      "usage": "Menu highlights, Weekly Menu card background"
+    },
+    "wine_pouring": {
+      "url": "https://images.unsplash.com/photo-1622196103817-1e7794345385?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzV8MHwxfHNlYXJjaHwxfHxyZWQlMjB3aW5lJTIwcG91cmluZyUyMGdsYXNzJTIwZWxlZ2FudHxlbnwwfHx8fDE3NzM1MzA0MjJ8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Red wine being poured into a glass",
+      "usage": "Reservations background or Footer accent"
+    }
+  },
+  "pages": {
+    "home": {
+      "sections": ["Hero (Video/Image)", "About Teaser (Chef Stephano)", "Weekly Menu Preview", "Full Menu CTA", "Reservations CTA", "Contact/Footer"],
+      "key_elements": ["Parallax scrolling", "Text reveal animations", "High contrast imagery"]
+    },
+    "weekly_menu": {
+      "structure": "Grid layout showing Entrée, Plat (Meat/Veg/Fish), Dessert",
+      "pricing_display": "Clear typography for formula prices (28,90€, etc.)",
+      "admin_editable": true
+    },
+    "reservations": {
+      "component": "Shadcn Calendar + Time Slot Grid",
+      "style": "Minimalist, easy to use on mobile"
+    },
+    "admin": {
+      "style": "Clean, functional, high contrast for readability",
+      "features": ["Photo Upload", "Menu Text Editor", "Price Adjustment"]
+    }
+  },
+  "animations": {
+    "micro": "hover:scale-105 transition-transform duration-500",
+    "page_transition": "opacity-0 to opacity-100 duration-700",
+    "scroll": "Fade in up (y-10 to y-0, opacity 0 to 1)"
+  },
+  "accessibility": {
+    "contrast_check": "Ensure gold text is readable on black (use large sizes or high brightness)",
+    "aria_labels": "Required for all interactive elements",
+    "focus_states": "Visible gold ring offset-2"
+  },
+  "instructions_to_main_agent": [
+    "Install 'lucide-react' for icons.",
+    "Install 'framer-motion' for animations.",
+    "Use 'Playfair Display' from Google Fonts (import in index.css).",
+    "Use 'Manrope' from Google Fonts.",
+    "Implement the 'Weekly Menu' logic carefully: it changes every week, so the Admin Dashboard must allow easy updates of text strings.",
+    "Ensure the Multi-language toggle (FR/EN/PT) is visible in the Navbar.",
+    "For the map, use an iframe or a static image linking to Google Maps.",
+    "The admin panel login should be simple (hardcoded or simple DB check) as requested."
+  ],
+  "universal_guidelines": [
+    "Do not use gradients for text.",
+    "Do not center everything; use asymmetry.",
+    "Use plenty of negative space (p-24+).",
+    "Images must have 'object-cover' and distinct overlays for text readability."
+  ]
+}
