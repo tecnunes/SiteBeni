@@ -234,7 +234,7 @@ async def get_active_weekly_menu():
     return menu
 
 @api_router.get("/weekly-menu/all", response_model=List[WeeklyMenuData])
-async def get_all_weekly_menus():
+async def get_all_weekly_menus(admin: dict = Depends(get_current_admin)):
     menus = await db.weekly_menus.find({}, {"_id": 0}).sort("week_start", -1).to_list(100)
     return menus
 

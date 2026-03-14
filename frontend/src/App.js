@@ -6,7 +6,10 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import Home from './pages/Home';
+import About from './pages/About';
+import Menu from './pages/Menu';
 import WeeklyMenu from './pages/WeeklyMenu';
+import Gallery from './pages/Gallery';
 import Reservations from './pages/Reservations';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -54,10 +57,34 @@ function AppContent() {
           } 
         />
         <Route 
+          path="/about" 
+          element={
+            <PublicLayout>
+              <About />
+            </PublicLayout>
+          } 
+        />
+        <Route 
+          path="/menu" 
+          element={
+            <PublicLayout>
+              <Menu />
+            </PublicLayout>
+          } 
+        />
+        <Route 
           path="/weekly-menu" 
           element={
             <PublicLayout>
               <WeeklyMenu />
+            </PublicLayout>
+          } 
+        />
+        <Route 
+          path="/gallery" 
+          element={
+            <PublicLayout>
+              <Gallery />
             </PublicLayout>
           } 
         />

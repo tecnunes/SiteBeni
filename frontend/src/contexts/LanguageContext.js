@@ -4,7 +4,10 @@ const translations = {
   fr: {
     // Navigation
     nav_home: 'Accueil',
-    nav_weekly_menu: 'Menu de la Semaine',
+    nav_about: 'Notre Histoire',
+    nav_menu: 'Carte',
+    nav_weekly_menu: 'Menu Semaine',
+    nav_gallery: 'Galerie',
     nav_reservations: 'Réservations',
     nav_contact: 'Contact',
     nav_admin: 'Admin',
@@ -89,7 +92,10 @@ const translations = {
   en: {
     // Navigation
     nav_home: 'Home',
+    nav_about: 'Our Story',
+    nav_menu: 'Menu',
     nav_weekly_menu: 'Weekly Menu',
+    nav_gallery: 'Gallery',
     nav_reservations: 'Reservations',
     nav_contact: 'Contact',
     nav_admin: 'Admin',
@@ -174,7 +180,10 @@ const translations = {
   pt: {
     // Navigation
     nav_home: 'Início',
-    nav_weekly_menu: 'Menu da Semana',
+    nav_about: 'Nossa História',
+    nav_menu: 'Cardápio',
+    nav_weekly_menu: 'Menu Semana',
+    nav_gallery: 'Galeria',
     nav_reservations: 'Reservas',
     nav_contact: 'Contato',
     nav_admin: 'Admin',

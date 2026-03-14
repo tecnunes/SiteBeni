@@ -30,9 +30,11 @@ const Navbar = () => {
 
   const navLinks = [
     { to: '/', label: t('nav_home') },
+    { to: '/about', label: t('nav_about') },
+    { to: '/menu', label: t('nav_menu') },
     { to: '/weekly-menu', label: t('nav_weekly_menu') },
+    { to: '/gallery', label: t('nav_gallery') },
     { to: '/reservations', label: t('nav_reservations') },
-    { to: '/#contact', label: t('nav_contact') },
   ];
 
   const languages = [

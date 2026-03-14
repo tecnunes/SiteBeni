@@ -85,11 +85,25 @@ const Footer = () => {
                 {t('nav_home')}
               </Link>
               <Link 
-                to="/weekly-menu" 
+                to="/about" 
                 className="text-white/70 text-sm hover:text-[#d4af37] transition-colors"
-                data-testid="footer-link-weekly-menu"
+                data-testid="footer-link-about"
               >
-                {t('nav_weekly_menu')}
+                {t('nav_about')}
+              </Link>
+              <Link 
+                to="/menu" 
+                className="text-white/70 text-sm hover:text-[#d4af37] transition-colors"
+                data-testid="footer-link-menu"
+              >
+                {t('nav_menu')}
+              </Link>
+              <Link 
+                to="/gallery" 
+                className="text-white/70 text-sm hover:text-[#d4af37] transition-colors"
+                data-testid="footer-link-gallery"
+              >
+                {t('nav_gallery')}
               </Link>
               <Link 
                 to="/reservations" 
