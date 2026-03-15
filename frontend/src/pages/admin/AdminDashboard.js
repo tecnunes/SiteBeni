@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Menu, X, Home, Calendar, UtensilsCrossed, Settings, LogOut, 
-  Plus, Trash2, Edit2, Save, Image, Check, XCircle
+  Plus, Trash2, Save, Image, Check, XCircle, FileText, BookOpen
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -13,6 +13,7 @@ import { Textarea } from '../../components/ui/textarea';
 import { Label } from '../../components/ui/label';
 import { Calendar as CalendarComponent } from '../../components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import ImageUpload from '../../components/ImageUpload';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -27,11 +28,16 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('menu');
-  const [weeklyMenu, setWeeklyMenu] = useState(null);
-  const [reservations, setReservations] = useState([]);
+  const [activeTab, setActiveTab] = useState('weekly');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Data states
+  const [weeklyMenu, setWeeklyMenu] = useState(null);
+  const [reservations, setReservations] = useState([]);
+  const [menuItems, setMenuItems] = useState([]);
+  const [siteContent, setSiteContent] = useState(null);
+  const [siteSettings, setSiteSettings] = useState(null);
 
   // Menu form state
   const [menuForm, setMenuForm] = useState({
@@ -53,9 +59,12 @@ const AdminDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [menuRes, reservationsRes] = await Promise.all([
+      const [menuRes, reservationsRes, menuItemsRes, contentRes, settingsRes] = await Promise.all([
         axios.get(`${API}/weekly-menu`),
-        axios.get(`${API}/reservations`)
+        axios.get(`${API}/reservations`),
+        axios.get(`${API}/menu-items`),
+        axios.get(`${API}/content`),
+        axios.get(`${API}/settings`)
       ]);
       
       if (menuRes.data) {
@@ -68,6 +77,9 @@ const AdminDashboard = () => {
       }
       
       setReservations(reservationsRes.data || []);
+      setMenuItems(menuItemsRes.data || []);
+      setSiteContent(contentRes.data || {});
+      setSiteSettings(settingsRes.data || {});
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -80,41 +92,30 @@ const AdminDashboard = () => {
     navigate('/admin/login');
   };
 
+  // Weekly Menu Functions
   const addDish = (category) => {
     const newDish = {
       id: `dish-${Date.now()}`,
-      name_fr: '',
-      name_en: '',
-      name_pt: '',
-      description_fr: '',
-      description_en: '',
-      description_pt: '',
+      name_fr: '', name_en: '', name_pt: '',
+      description_fr: '', description_en: '', description_pt: '',
       category,
       image_url: ''
     };
-    setMenuForm(prev => ({
-      ...prev,
-      dishes: [...prev.dishes, newDish]
-    }));
+    setMenuForm(prev => ({ ...prev, dishes: [...prev.dishes, newDish] }));
   };
 
   const updateDish = (dishId, field, value) => {
     setMenuForm(prev => ({
       ...prev,
-      dishes: prev.dishes.map(d => 
-        d.id === dishId ? { ...d, [field]: value } : d
-      )
+      dishes: prev.dishes.map(d => d.id === dishId ? { ...d, [field]: value } : d)
     }));
   };
 
   const removeDish = (dishId) => {
-    setMenuForm(prev => ({
-      ...prev,
-      dishes: prev.dishes.filter(d => d.id !== dishId)
-    }));
+    setMenuForm(prev => ({ ...prev, dishes: prev.dishes.filter(d => d.id !== dishId) }));
   };
 
-  const saveMenu = async () => {
+  const saveWeeklyMenu = async () => {
     setSaving(true);
     try {
       const payload = {
@@ -134,23 +135,118 @@ const AdminDashboard = () => {
         setWeeklyMenu(response.data);
       }
       
-      toast.success('Menu enregistré avec succès!');
+      toast.success('Menu enregistré!');
       fetchData();
     } catch (error) {
-      console.error('Error saving menu:', error);
       toast.error('Erreur lors de l\'enregistrement');
     } finally {
       setSaving(false);
     }
   };
 
+  // Menu Items (Cardápio) Functions
+  const addMenuItem = (category) => {
+    const newItem = {
+      id: `new-${Date.now()}`,
+      category,
+      name_fr: '', name_en: '', name_pt: '',
+      description_fr: '', description_en: '', description_pt: '',
+      price: 0,
+      image_url: '',
+      is_available: true,
+      sort_order: menuItems.filter(i => i.category === category).length,
+      isNew: true
+    };
+    setMenuItems(prev => [...prev, newItem]);
+  };
+
+  const updateMenuItem = (itemId, field, value) => {
+    setMenuItems(prev => prev.map(item => 
+      item.id === itemId ? { ...item, [field]: value } : item
+    ));
+  };
+
+  const saveMenuItem = async (item) => {
+    setSaving(true);
+    try {
+      const payload = {
+        category: item.category,
+        name_fr: item.name_fr,
+        name_en: item.name_en,
+        name_pt: item.name_pt,
+        description_fr: item.description_fr || '',
+        description_en: item.description_en || '',
+        description_pt: item.description_pt || '',
+        price: parseFloat(item.price) || 0,
+        image_url: item.image_url || '',
+        is_available: item.is_available !== false,
+        sort_order: item.sort_order || 0
+      };
+
+      if (item.isNew) {
+        await axios.post(`${API}/menu-items`, payload);
+      } else {
+        await axios.put(`${API}/menu-items/${item.id}`, payload);
+      }
+      
+      toast.success('Item sauvegardé!');
+      fetchData();
+    } catch (error) {
+      toast.error('Erreur lors de la sauvegarde');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteMenuItem = async (itemId, isNew) => {
+    if (isNew) {
+      setMenuItems(prev => prev.filter(i => i.id !== itemId));
+      return;
+    }
+    if (!window.confirm('Supprimer cet item?')) return;
+    try {
+      await axios.delete(`${API}/menu-items/${itemId}`);
+      toast.success('Item supprimé');
+      fetchData();
+    } catch (error) {
+      toast.error('Erreur lors de la suppression');
+    }
+  };
+
+  // Site Content Functions
+  const saveSiteContent = async () => {
+    setSaving(true);
+    try {
+      await axios.put(`${API}/content`, siteContent);
+      toast.success('Contenu sauvegardé!');
+    } catch (error) {
+      toast.error('Erreur lors de la sauvegarde');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Site Settings Functions
+  const saveSiteSettings = async () => {
+    setSaving(true);
+    try {
+      await axios.put(`${API}/settings`, siteSettings);
+      toast.success('Paramètres sauvegardés!');
+    } catch (error) {
+      toast.error('Erreur lors de la sauvegarde');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Reservations Functions
   const updateReservationStatus = async (id, status) => {
     try {
       await axios.put(`${API}/reservations/${id}/status?status=${status}`);
       toast.success('Statut mis à jour');
       fetchData();
     } catch (error) {
-      toast.error('Erreur lors de la mise à jour');
+      toast.error('Erreur');
     }
   };
 
@@ -161,13 +257,17 @@ const AdminDashboard = () => {
       toast.success('Réservation supprimée');
       fetchData();
     } catch (error) {
-      toast.error('Erreur lors de la suppression');
+      toast.error('Erreur');
     }
   };
 
   const sidebarItems = [
-    { id: 'menu', icon: UtensilsCrossed, label: t('admin_weekly_menu') },
-    { id: 'reservations', icon: Calendar, label: t('admin_reservations') },
+    { id: 'weekly', icon: UtensilsCrossed, label: 'Menu Semaine' },
+    { id: 'cardapio', icon: BookOpen, label: 'Cardápio Completo' },
+    { id: 'content', icon: FileText, label: 'Textes du Site' },
+    { id: 'images', icon: Image, label: 'Images du Site' },
+    { id: 'settings', icon: Settings, label: 'Paramètres' },
+    { id: 'reservations', icon: Calendar, label: 'Réservations' },
   ];
 
   const dishCategories = [
@@ -177,24 +277,25 @@ const AdminDashboard = () => {
     { id: 'dessert', label: 'Dessert', max: 2 }
   ];
 
+  const menuCategories = [
+    { id: 'starters', label: 'Entrées' },
+    { id: 'mains', label: 'Plats Principaux' },
+    { id: 'seafood', label: 'Poissons & Fruits de Mer' },
+    { id: 'desserts', label: 'Desserts' },
+    { id: 'drinks', label: 'Boissons' }
+  ];
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex" data-testid="admin-dashboard">
       {/* Sidebar */}
-      <aside 
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#121212] border-r border-white/10 transform transition-transform duration-300 lg:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-        data-testid="admin-sidebar"
-      >
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#121212] border-r border-white/10 transform transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex flex-col h-full">
-          {/* Logo */}
           <div className="p-6 border-b border-white/10">
             <Link to="/" className="font-display text-2xl text-white">BÉNI</Link>
             <p className="text-xs uppercase tracking-[0.15em] text-[#d4af37] mt-1">Administration</p>
           </div>
 
-          {/* Nav */}
-          <nav className="flex-1 p-4 space-y-2">
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {sidebarItems.map(item => (
               <button
                 key={item.id}
@@ -212,358 +313,435 @@ const AdminDashboard = () => {
             ))}
           </nav>
 
-          {/* User & Logout */}
           <div className="p-4 border-t border-white/10">
             <p className="text-white/50 text-xs mb-3 truncate">{admin?.email}</p>
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white/60 hover:text-red-400 hover:bg-red-400/10 transition-colors"
-              data-testid="logout-btn"
-            >
+            <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white/60 hover:text-red-400 hover:bg-red-400/10 transition-colors">
               <LogOut className="w-5 h-5" />
-              {t('admin_logout')}
+              Déconnexion
             </button>
           </div>
         </div>
       </aside>
 
-      {/* Mobile Overlay */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
       {/* Main Content */}
       <main className="flex-1 lg:ml-64">
-        {/* Header */}
         <header className="sticky top-0 z-30 bg-[#0a0a0a]/95 backdrop-blur-lg border-b border-white/5 px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="lg:hidden text-white p-2"
-                data-testid="mobile-sidebar-toggle"
-              >
+              <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden text-white p-2">
                 {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
               <h1 className="font-display text-xl text-white">
-                {activeTab === 'menu' ? t('admin_weekly_menu') : t('admin_reservations')}
+                {sidebarItems.find(i => i.id === activeTab)?.label}
               </h1>
             </div>
-
-            <Link
-              to="/"
-              className="flex items-center gap-2 text-white/50 text-sm hover:text-[#d4af37] transition-colors"
-              data-testid="view-site-link"
-            >
+            <Link to="/" className="flex items-center gap-2 text-white/50 text-sm hover:text-[#d4af37] transition-colors">
               <Home className="w-4 h-4" />
               Voir le site
             </Link>
           </div>
         </header>
 
-        {/* Content */}
         <div className="p-6">
           {loading ? (
-            <div className="text-center py-12">
-              <p className="text-white/50">{t('loading')}</p>
-            </div>
-          ) : activeTab === 'menu' ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="space-y-8"
-              data-testid="menu-editor"
-            >
-              {/* Date Range & Prices */}
-              <div className="bg-[#121212] border border-white/10 p-6 space-y-6">
-                <h2 className="text-white text-lg font-medium">Paramètres du Menu</h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Week Start */}
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase tracking-[0.15em] text-white/70">Début de semaine</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start bg-transparent border-white/20 text-white h-12"
-                          data-testid="week-start-picker"
-                        >
-                          {format(menuForm.week_start, 'PPP', { locale: fr })}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 bg-[#121212] border-white/10">
-                        <CalendarComponent
-                          mode="single"
-                          selected={menuForm.week_start}
-                          onSelect={(date) => date && setMenuForm(prev => ({ ...prev, week_start: date }))}
-                          locale={fr}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
-                  {/* Week End */}
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase tracking-[0.15em] text-white/70">Fin de semaine</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start bg-transparent border-white/20 text-white h-12"
-                          data-testid="week-end-picker"
-                        >
-                          {format(menuForm.week_end, 'PPP', { locale: fr })}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 bg-[#121212] border-white/10">
-                        <CalendarComponent
-                          mode="single"
-                          selected={menuForm.week_end}
-                          onSelect={(date) => date && setMenuForm(prev => ({ ...prev, week_end: date }))}
-                          locale={fr}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-
-                {/* Prices */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs text-white/70">Entrée+Plat+Dessert (€)</Label>
-                    <Input
-                      type="number"
-                      step="0.10"
-                      value={menuForm.price_full}
-                      onChange={(e) => setMenuForm(prev => ({ ...prev, price_full: parseFloat(e.target.value) }))}
-                      className="bg-transparent border-white/20 text-white"
-                      data-testid="price-full-input"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs text-white/70">Entrée+Plat (€)</Label>
-                    <Input
-                      type="number"
-                      step="0.10"
-                      value={menuForm.price_entree_plat}
-                      onChange={(e) => setMenuForm(prev => ({ ...prev, price_entree_plat: parseFloat(e.target.value) }))}
-                      className="bg-transparent border-white/20 text-white"
-                      data-testid="price-entree-plat-input"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs text-white/70">Plat+Dessert (€)</Label>
-                    <Input
-                      type="number"
-                      step="0.10"
-                      value={menuForm.price_plat_dessert}
-                      onChange={(e) => setMenuForm(prev => ({ ...prev, price_plat_dessert: parseFloat(e.target.value) }))}
-                      className="bg-transparent border-white/20 text-white"
-                      data-testid="price-plat-dessert-input"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs text-white/70">Plat Seul (€)</Label>
-                    <Input
-                      type="number"
-                      step="0.10"
-                      value={menuForm.price_plat_only}
-                      onChange={(e) => setMenuForm(prev => ({ ...prev, price_plat_only: parseFloat(e.target.value) }))}
-                      className="bg-transparent border-white/20 text-white"
-                      data-testid="price-plat-only-input"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Dishes by Category */}
-              {dishCategories.map(category => {
-                const categoryDishes = menuForm.dishes.filter(d => d.category === category.id);
-                return (
-                  <div key={category.id} className="bg-[#121212] border border-white/10 p-6" data-testid={`category-${category.id}`}>
-                    <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-white text-lg font-medium">{category.label}</h3>
-                      {categoryDishes.length < category.max && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => addDish(category.id)}
-                          className="border-[#d4af37] text-[#d4af37] hover:bg-[#d4af37]/10"
-                          data-testid={`add-${category.id}-btn`}
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Ajouter
-                        </Button>
-                      )}
+            <div className="text-center py-12"><p className="text-white/50">Chargement...</p></div>
+          ) : (
+            <>
+              {/* Weekly Menu Tab */}
+              {activeTab === 'weekly' && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+                  <div className="bg-[#121212] border border-white/10 p-6 space-y-6">
+                    <h2 className="text-white text-lg font-medium">Paramètres du Menu</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label className="text-xs uppercase tracking-[0.15em] text-white/70">Début de semaine</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" className="w-full justify-start bg-transparent border-white/20 text-white h-12">
+                              {format(menuForm.week_start, 'PPP', { locale: fr })}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0 bg-[#121212] border-white/10">
+                            <CalendarComponent mode="single" selected={menuForm.week_start} onSelect={(date) => date && setMenuForm(prev => ({ ...prev, week_start: date }))} locale={fr} />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs uppercase tracking-[0.15em] text-white/70">Fin de semaine</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" className="w-full justify-start bg-transparent border-white/20 text-white h-12">
+                              {format(menuForm.week_end, 'PPP', { locale: fr })}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0 bg-[#121212] border-white/10">
+                            <CalendarComponent mode="single" selected={menuForm.week_end} onSelect={(date) => date && setMenuForm(prev => ({ ...prev, week_end: date }))} locale={fr} />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                     </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs text-white/70">Entrée+Plat+Dessert (€)</Label>
+                        <Input type="number" step="0.10" value={menuForm.price_full} onChange={(e) => setMenuForm(prev => ({ ...prev, price_full: parseFloat(e.target.value) }))} className="bg-transparent border-white/20 text-white" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-white/70">Entrée+Plat (€)</Label>
+                        <Input type="number" step="0.10" value={menuForm.price_entree_plat} onChange={(e) => setMenuForm(prev => ({ ...prev, price_entree_plat: parseFloat(e.target.value) }))} className="bg-transparent border-white/20 text-white" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-white/70">Plat+Dessert (€)</Label>
+                        <Input type="number" step="0.10" value={menuForm.price_plat_dessert} onChange={(e) => setMenuForm(prev => ({ ...prev, price_plat_dessert: parseFloat(e.target.value) }))} className="bg-transparent border-white/20 text-white" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-white/70">Plat Seul (€)</Label>
+                        <Input type="number" step="0.10" value={menuForm.price_plat_only} onChange={(e) => setMenuForm(prev => ({ ...prev, price_plat_only: parseFloat(e.target.value) }))} className="bg-transparent border-white/20 text-white" />
+                      </div>
+                    </div>
+                  </div>
 
-                    {categoryDishes.length === 0 ? (
-                      <p className="text-white/30 text-sm">Aucun plat ajouté</p>
-                    ) : (
-                      <div className="space-y-6">
-                        {categoryDishes.map(dish => (
-                          <div key={dish.id} className="bg-white/5 p-4 space-y-4" data-testid={`dish-${dish.id}`}>
-                            <div className="flex justify-end">
-                              <button
-                                onClick={() => removeDish(dish.id)}
-                                className="text-red-400 hover:text-red-300 p-2"
-                                data-testid={`delete-dish-${dish.id}`}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                  {dishCategories.map(category => {
+                    const categoryDishes = menuForm.dishes.filter(d => d.category === category.id);
+                    return (
+                      <div key={category.id} className="bg-[#121212] border border-white/10 p-6">
+                        <div className="flex items-center justify-between mb-6">
+                          <h3 className="text-white text-lg font-medium">{category.label}</h3>
+                          {categoryDishes.length < category.max && (
+                            <Button variant="outline" size="sm" onClick={() => addDish(category.id)} className="border-[#d4af37] text-[#d4af37] hover:bg-[#d4af37]/10">
+                              <Plus className="w-4 h-4 mr-2" />Ajouter
+                            </Button>
+                          )}
+                        </div>
+                        {categoryDishes.length === 0 ? (
+                          <p className="text-white/30 text-sm">Aucun plat ajouté</p>
+                        ) : (
+                          <div className="space-y-6">
+                            {categoryDishes.map(dish => (
+                              <div key={dish.id} className="bg-white/5 p-4 space-y-4">
+                                <div className="flex justify-end">
+                                  <button onClick={() => removeDish(dish.id)} className="text-red-400 hover:text-red-300 p-2">
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                  <Input value={dish.name_fr} onChange={(e) => updateDish(dish.id, 'name_fr', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Nom (FR)" />
+                                  <Input value={dish.name_en} onChange={(e) => updateDish(dish.id, 'name_en', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Name (EN)" />
+                                  <Input value={dish.name_pt} onChange={(e) => updateDish(dish.id, 'name_pt', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Nome (PT)" />
+                                </div>
+                                <Textarea value={dish.description_fr} onChange={(e) => updateDish(dish.id, 'description_fr', e.target.value)} className="bg-transparent border-white/20 text-white resize-none" rows={2} placeholder="Description (FR)" />
+                                <ImageUpload value={dish.image_url} onChange={(url) => updateDish(dish.id, 'image_url', url)} />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  <div className="flex justify-end">
+                    <Button onClick={saveWeeklyMenu} disabled={saving} className="bg-[#d4af37] text-black hover:bg-white px-8">
+                      <Save className="w-4 h-4 mr-2" />{saving ? 'Enregistrement...' : 'Enregistrer'}
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Cardápio Completo Tab */}
+              {activeTab === 'cardapio' && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+                  <Tabs defaultValue="starters" className="w-full">
+                    <TabsList className="bg-[#121212] border border-white/10 p-1 mb-6">
+                      {menuCategories.map(cat => (
+                        <TabsTrigger key={cat.id} value={cat.id} className="data-[state=active]:bg-[#d4af37] data-[state=active]:text-black">
+                          {cat.label}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+
+                    {menuCategories.map(category => (
+                      <TabsContent key={category.id} value={category.id} className="space-y-4">
+                        <div className="flex justify-between items-center mb-4">
+                          <h3 className="text-white text-lg">{category.label}</h3>
+                          <Button onClick={() => addMenuItem(category.id)} className="bg-[#d4af37] text-black hover:bg-white">
+                            <Plus className="w-4 h-4 mr-2" />Ajouter
+                          </Button>
+                        </div>
+
+                        {menuItems.filter(item => item.category === category.id).map(item => (
+                          <div key={item.id} className="bg-[#121212] border border-white/10 p-6 space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                              <Input value={item.name_fr} onChange={(e) => updateMenuItem(item.id, 'name_fr', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Nom (FR)" />
+                              <Input value={item.name_en} onChange={(e) => updateMenuItem(item.id, 'name_en', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Name (EN)" />
+                              <Input value={item.name_pt} onChange={(e) => updateMenuItem(item.id, 'name_pt', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Nome (PT)" />
+                              <Input type="number" step="0.01" value={item.price} onChange={(e) => updateMenuItem(item.id, 'price', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Prix (€)" />
                             </div>
-
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <div className="space-y-2">
-                                <Label className="text-xs text-white/70">Nom (FR)</Label>
-                                <Input
-                                  value={dish.name_fr}
-                                  onChange={(e) => updateDish(dish.id, 'name_fr', e.target.value)}
-                                  className="bg-transparent border-white/20 text-white"
-                                  placeholder="Nom en français"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label className="text-xs text-white/70">Nom (EN)</Label>
-                                <Input
-                                  value={dish.name_en}
-                                  onChange={(e) => updateDish(dish.id, 'name_en', e.target.value)}
-                                  className="bg-transparent border-white/20 text-white"
-                                  placeholder="Name in English"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label className="text-xs text-white/70">Nom (PT)</Label>
-                                <Input
-                                  value={dish.name_pt}
-                                  onChange={(e) => updateDish(dish.id, 'name_pt', e.target.value)}
-                                  className="bg-transparent border-white/20 text-white"
-                                  placeholder="Nome em português"
-                                />
+                              <Input value={item.description_fr || ''} onChange={(e) => updateMenuItem(item.id, 'description_fr', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Description (FR)" />
+                              <Input value={item.description_en || ''} onChange={(e) => updateMenuItem(item.id, 'description_en', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Description (EN)" />
+                              <Input value={item.description_pt || ''} onChange={(e) => updateMenuItem(item.id, 'description_pt', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Descrição (PT)" />
+                            </div>
+                            <div className="flex gap-4">
+                              <div className="flex-1">
+                                <ImageUpload value={item.image_url || ''} onChange={(url) => updateMenuItem(item.id, 'image_url', url)} />
                               </div>
                             </div>
-
-                            <div className="space-y-2">
-                              <Label className="text-xs text-white/70">Description (FR)</Label>
-                              <Textarea
-                                value={dish.description_fr}
-                                onChange={(e) => updateDish(dish.id, 'description_fr', e.target.value)}
-                                className="bg-transparent border-white/20 text-white resize-none"
-                                rows={2}
-                                placeholder="Description en français"
-                              />
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label className="text-xs text-white/70">Image du plat</Label>
-                              <ImageUpload
-                                value={dish.image_url}
-                                onChange={(url) => updateDish(dish.id, 'image_url', url)}
-                              />
+                            <div className="flex justify-end gap-2">
+                              <Button variant="outline" onClick={() => deleteMenuItem(item.id, item.isNew)} className="border-red-500 text-red-500 hover:bg-red-500/10">
+                                <Trash2 className="w-4 h-4 mr-2" />Supprimer
+                              </Button>
+                              <Button onClick={() => saveMenuItem(item)} disabled={saving} className="bg-[#d4af37] text-black hover:bg-white">
+                                <Save className="w-4 h-4 mr-2" />Sauvegarder
+                              </Button>
                             </div>
                           </div>
                         ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
 
-              {/* Save Button */}
-              <div className="flex justify-end">
-                <Button
-                  onClick={saveMenu}
-                  disabled={saving}
-                  className="bg-[#d4af37] text-black hover:bg-white px-8"
-                  data-testid="save-menu-btn"
-                >
-                  <Save className="w-4 h-4 mr-2" />
-                  {saving ? 'Enregistrement...' : 'Enregistrer le Menu'}
-                </Button>
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="space-y-4"
-              data-testid="reservations-list"
-            >
-              {reservations.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-white/50">Aucune réservation</p>
-                </div>
-              ) : (
-                reservations.map(reservation => (
-                  <div 
-                    key={reservation.id}
-                    className="bg-[#121212] border border-white/10 p-6"
-                    data-testid={`reservation-${reservation.id}`}
-                  >
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        {menuItems.filter(item => item.category === category.id).length === 0 && (
+                          <p className="text-white/30 text-center py-8">Aucun item dans cette catégorie</p>
+                        )}
+                      </TabsContent>
+                    ))}
+                  </Tabs>
+                </motion.div>
+              )}
+
+              {/* Site Content (Texts) Tab */}
+              {activeTab === 'content' && siteContent && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+                  <div className="bg-[#121212] border border-white/10 p-6 space-y-6">
+                    <h2 className="text-white text-lg font-medium border-b border-white/10 pb-4">Section Hero</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-2">
-                        <div className="flex items-center gap-3">
-                          <h3 className="text-white font-medium">{reservation.name}</h3>
-                          <span className={`px-2 py-1 text-xs uppercase tracking-wider ${
-                            reservation.status === 'confirmed' ? 'bg-green-500/20 text-green-400' :
-                            reservation.status === 'cancelled' ? 'bg-red-500/20 text-red-400' :
-                            'bg-yellow-500/20 text-yellow-400'
-                          }`}>
-                            {reservation.status}
-                          </span>
-                        </div>
-                        <p className="text-white/60 text-sm">
-                          {reservation.date} à {reservation.time} · {reservation.guests} personnes
-                        </p>
-                        <p className="text-white/40 text-sm">
-                          {reservation.email} · {reservation.phone}
-                        </p>
-                        {reservation.notes && (
-                          <p className="text-white/30 text-sm italic">{reservation.notes}</p>
-                        )}
+                        <Label className="text-xs text-white/70">Sous-titre (FR)</Label>
+                        <Input value={siteContent.hero_subtitle_fr || ''} onChange={(e) => setSiteContent({...siteContent, hero_subtitle_fr: e.target.value})} className="bg-transparent border-white/20 text-white" />
                       </div>
-
-                      <div className="flex items-center gap-2">
-                        {reservation.status === 'pending' && (
-                          <>
-                            <Button
-                              size="sm"
-                              onClick={() => updateReservationStatus(reservation.id, 'confirmed')}
-                              className="bg-green-600 hover:bg-green-500"
-                              data-testid={`confirm-${reservation.id}`}
-                            >
-                              <Check className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => updateReservationStatus(reservation.id, 'cancelled')}
-                              className="border-red-500 text-red-500 hover:bg-red-500/10"
-                              data-testid={`cancel-${reservation.id}`}
-                            >
-                              <XCircle className="w-4 h-4" />
-                            </Button>
-                          </>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => deleteReservation(reservation.id)}
-                          className="border-white/20 text-white/50 hover:text-red-400 hover:border-red-400"
-                          data-testid={`delete-${reservation.id}`}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-white/70">Subtitle (EN)</Label>
+                        <Input value={siteContent.hero_subtitle_en || ''} onChange={(e) => setSiteContent({...siteContent, hero_subtitle_en: e.target.value})} className="bg-transparent border-white/20 text-white" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-white/70">Subtítulo (PT)</Label>
+                        <Input value={siteContent.hero_subtitle_pt || ''} onChange={(e) => setSiteContent({...siteContent, hero_subtitle_pt: e.target.value})} className="bg-transparent border-white/20 text-white" />
                       </div>
                     </div>
                   </div>
-                ))
+
+                  <div className="bg-[#121212] border border-white/10 p-6 space-y-6">
+                    <h2 className="text-white text-lg font-medium border-b border-white/10 pb-4">Section À Propos</h2>
+                    <div className="space-y-2">
+                      <Label className="text-xs text-white/70">Nom du Chef</Label>
+                      <Input value={siteContent.chef_name || ''} onChange={(e) => setSiteContent({...siteContent, chef_name: e.target.value})} className="bg-transparent border-white/20 text-white" />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs text-white/70">Titre (FR)</Label>
+                        <Input value={siteContent.about_title_fr || ''} onChange={(e) => setSiteContent({...siteContent, about_title_fr: e.target.value})} className="bg-transparent border-white/20 text-white" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-white/70">Title (EN)</Label>
+                        <Input value={siteContent.about_title_en || ''} onChange={(e) => setSiteContent({...siteContent, about_title_en: e.target.value})} className="bg-transparent border-white/20 text-white" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-white/70">Título (PT)</Label>
+                        <Input value={siteContent.about_title_pt || ''} onChange={(e) => setSiteContent({...siteContent, about_title_pt: e.target.value})} className="bg-transparent border-white/20 text-white" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs text-white/70">Texte (FR)</Label>
+                      <Textarea value={siteContent.about_text_fr || ''} onChange={(e) => setSiteContent({...siteContent, about_text_fr: e.target.value})} className="bg-transparent border-white/20 text-white resize-none" rows={3} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs text-white/70">Text (EN)</Label>
+                      <Textarea value={siteContent.about_text_en || ''} onChange={(e) => setSiteContent({...siteContent, about_text_en: e.target.value})} className="bg-transparent border-white/20 text-white resize-none" rows={3} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs text-white/70">Texto (PT)</Label>
+                      <Textarea value={siteContent.about_text_pt || ''} onChange={(e) => setSiteContent({...siteContent, about_text_pt: e.target.value})} className="bg-transparent border-white/20 text-white resize-none" rows={3} />
+                    </div>
+                  </div>
+
+                  <div className="bg-[#121212] border border-white/10 p-6 space-y-6">
+                    <h2 className="text-white text-lg font-medium border-b border-white/10 pb-4">Citation</h2>
+                    <div className="space-y-2">
+                      <Label className="text-xs text-white/70">Citation (FR)</Label>
+                      <Textarea value={siteContent.about_quote_fr || ''} onChange={(e) => setSiteContent({...siteContent, about_quote_fr: e.target.value})} className="bg-transparent border-white/20 text-white resize-none" rows={2} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs text-white/70">Quote (EN)</Label>
+                      <Textarea value={siteContent.about_quote_en || ''} onChange={(e) => setSiteContent({...siteContent, about_quote_en: e.target.value})} className="bg-transparent border-white/20 text-white resize-none" rows={2} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs text-white/70">Citação (PT)</Label>
+                      <Textarea value={siteContent.about_quote_pt || ''} onChange={(e) => setSiteContent({...siteContent, about_quote_pt: e.target.value})} className="bg-transparent border-white/20 text-white resize-none" rows={2} />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button onClick={saveSiteContent} disabled={saving} className="bg-[#d4af37] text-black hover:bg-white px-8">
+                      <Save className="w-4 h-4 mr-2" />{saving ? 'Enregistrement...' : 'Enregistrer les Textes'}
+                    </Button>
+                  </div>
+                </motion.div>
               )}
-            </motion.div>
+
+              {/* Site Images Tab */}
+              {activeTab === 'images' && siteContent && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+                  <div className="bg-[#121212] border border-white/10 p-6 space-y-6">
+                    <h2 className="text-white text-lg font-medium border-b border-white/10 pb-4">Image Hero (Page d'accueil)</h2>
+                    <ImageUpload value={siteContent.hero_image || ''} onChange={(url) => setSiteContent({...siteContent, hero_image: url})} />
+                  </div>
+
+                  <div className="bg-[#121212] border border-white/10 p-6 space-y-6">
+                    <h2 className="text-white text-lg font-medium border-b border-white/10 pb-4">Image du Chef</h2>
+                    <ImageUpload value={siteContent.chef_image || ''} onChange={(url) => setSiteContent({...siteContent, chef_image: url})} />
+                  </div>
+
+                  <div className="bg-[#121212] border border-white/10 p-6 space-y-6">
+                    <h2 className="text-white text-lg font-medium border-b border-white/10 pb-4">Images Section À Propos</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div>
+                        <Label className="text-xs text-white/70 mb-2 block">Image 1</Label>
+                        <ImageUpload value={siteContent.about_image_1 || ''} onChange={(url) => setSiteContent({...siteContent, about_image_1: url})} />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-white/70 mb-2 block">Image 2</Label>
+                        <ImageUpload value={siteContent.about_image_2 || ''} onChange={(url) => setSiteContent({...siteContent, about_image_2: url})} />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-white/70 mb-2 block">Image 3</Label>
+                        <ImageUpload value={siteContent.about_image_3 || ''} onChange={(url) => setSiteContent({...siteContent, about_image_3: url})} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#121212] border border-white/10 p-6 space-y-6">
+                    <h2 className="text-white text-lg font-medium border-b border-white/10 pb-4">Image Fond Réservations</h2>
+                    <ImageUpload value={siteContent.reservation_bg_image || ''} onChange={(url) => setSiteContent({...siteContent, reservation_bg_image: url})} />
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button onClick={saveSiteContent} disabled={saving} className="bg-[#d4af37] text-black hover:bg-white px-8">
+                      <Save className="w-4 h-4 mr-2" />{saving ? 'Enregistrement...' : 'Enregistrer les Images'}
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Settings Tab */}
+              {activeTab === 'settings' && siteSettings && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+                  <div className="bg-[#121212] border border-white/10 p-6 space-y-6">
+                    <h2 className="text-white text-lg font-medium border-b border-white/10 pb-4">Informations Générales</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs text-white/70">Nom du Restaurant</Label>
+                        <Input value={siteSettings.restaurant_name || ''} onChange={(e) => setSiteSettings({...siteSettings, restaurant_name: e.target.value})} className="bg-transparent border-white/20 text-white" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-white/70">Adresse</Label>
+                        <Input value={siteSettings.address || ''} onChange={(e) => setSiteSettings({...siteSettings, address: e.target.value})} className="bg-transparent border-white/20 text-white" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-white/70">Téléphone</Label>
+                        <Input value={siteSettings.phone || ''} onChange={(e) => setSiteSettings({...siteSettings, phone: e.target.value})} className="bg-transparent border-white/20 text-white" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-white/70">Email</Label>
+                        <Input value={siteSettings.email || ''} onChange={(e) => setSiteSettings({...siteSettings, email: e.target.value})} className="bg-transparent border-white/20 text-white" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#121212] border border-white/10 p-6 space-y-6">
+                    <h2 className="text-white text-lg font-medium border-b border-white/10 pb-4">Slogan</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs text-white/70">Slogan (FR)</Label>
+                        <Input value={siteSettings.tagline_fr || ''} onChange={(e) => setSiteSettings({...siteSettings, tagline_fr: e.target.value})} className="bg-transparent border-white/20 text-white" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-white/70">Tagline (EN)</Label>
+                        <Input value={siteSettings.tagline_en || ''} onChange={(e) => setSiteSettings({...siteSettings, tagline_en: e.target.value})} className="bg-transparent border-white/20 text-white" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-white/70">Slogan (PT)</Label>
+                        <Input value={siteSettings.tagline_pt || ''} onChange={(e) => setSiteSettings({...siteSettings, tagline_pt: e.target.value})} className="bg-transparent border-white/20 text-white" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#121212] border border-white/10 p-6 space-y-6">
+                    <h2 className="text-white text-lg font-medium border-b border-white/10 pb-4">Horaires</h2>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs text-white/70">Horaires (FR)</Label>
+                        <Textarea value={siteSettings.hours_fr || ''} onChange={(e) => setSiteSettings({...siteSettings, hours_fr: e.target.value})} className="bg-transparent border-white/20 text-white resize-none" rows={2} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-white/70">Hours (EN)</Label>
+                        <Textarea value={siteSettings.hours_en || ''} onChange={(e) => setSiteSettings({...siteSettings, hours_en: e.target.value})} className="bg-transparent border-white/20 text-white resize-none" rows={2} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-white/70">Horários (PT)</Label>
+                        <Textarea value={siteSettings.hours_pt || ''} onChange={(e) => setSiteSettings({...siteSettings, hours_pt: e.target.value})} className="bg-transparent border-white/20 text-white resize-none" rows={2} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button onClick={saveSiteSettings} disabled={saving} className="bg-[#d4af37] text-black hover:bg-white px-8">
+                      <Save className="w-4 h-4 mr-2" />{saving ? 'Enregistrement...' : 'Enregistrer les Paramètres'}
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Reservations Tab */}
+              {activeTab === 'reservations' && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                  {reservations.length === 0 ? (
+                    <div className="text-center py-12"><p className="text-white/50">Aucune réservation</p></div>
+                  ) : (
+                    reservations.map(reservation => (
+                      <div key={reservation.id} className="bg-[#121212] border border-white/10 p-6">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-3">
+                              <h3 className="text-white font-medium">{reservation.name}</h3>
+                              <span className={`px-2 py-1 text-xs uppercase tracking-wider ${
+                                reservation.status === 'confirmed' ? 'bg-green-500/20 text-green-400' :
+                                reservation.status === 'cancelled' ? 'bg-red-500/20 text-red-400' :
+                                'bg-yellow-500/20 text-yellow-400'
+                              }`}>{reservation.status}</span>
+                            </div>
+                            <p className="text-white/60 text-sm">{reservation.date} à {reservation.time} · {reservation.guests} personnes</p>
+                            <p className="text-white/40 text-sm">{reservation.email} · {reservation.phone}</p>
+                            {reservation.notes && <p className="text-white/30 text-sm italic">{reservation.notes}</p>}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {reservation.status === 'pending' && (
+                              <>
+                                <Button size="sm" onClick={() => updateReservationStatus(reservation.id, 'confirmed')} className="bg-green-600 hover:bg-green-500">
+                                  <Check className="w-4 h-4" />
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => updateReservationStatus(reservation.id, 'cancelled')} className="border-red-500 text-red-500 hover:bg-red-500/10">
+                                  <XCircle className="w-4 h-4" />
+                                </Button>
+                              </>
+                            )}
+                            <Button size="sm" variant="outline" onClick={() => deleteReservation(reservation.id)} className="border-white/20 text-white/50 hover:text-red-400 hover:border-red-400">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </motion.div>
+              )}
+            </>
           )}
         </div>
       </main>

@@ -1,17 +1,24 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import axios from 'axios';
+
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const Menu = () => {
-  const { language } = useLanguage();
+  const { language, getLocalizedField } = useLanguage();
+  const [menuItems, setMenuItems] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const content = {
     fr: {
       title: 'Notre Carte',
       subtitle: 'Menu Complet',
       weekly_cta: 'Voir le Menu de la Semaine',
+      reserve_cta: 'Réserver une Table',
+      price_note: 'Les prix sont en euros, service compris.',
       categories: {
         starters: 'Entrées',
         mains: 'Plats Principaux',
@@ -24,6 +31,8 @@ const Menu = () => {
       title: 'Our Menu',
       subtitle: 'Full Menu',
       weekly_cta: 'See Weekly Menu',
+      reserve_cta: 'Book a Table',
+      price_note: 'Prices are in euros, service included.',
       categories: {
         starters: 'Starters',
         mains: 'Main Courses',
@@ -36,6 +45,8 @@ const Menu = () => {
       title: 'Nosso Cardápio',
       subtitle: 'Menu Completo',
       weekly_cta: 'Ver Menu da Semana',
+      reserve_cta: 'Reservar uma Mesa',
+      price_note: 'Preços em euros, serviço incluído.',
       categories: {
         starters: 'Entradas',
         mains: 'Pratos Principais',
@@ -48,39 +59,58 @@ const Menu = () => {
 
   const c = content[language];
 
-  const menuItems = {
+  // Default menu items (fallback)
+  const defaultMenuItems = {
     starters: [
-      { name: { fr: 'Carpaccio de Bœuf', en: 'Beef Carpaccio', pt: 'Carpaccio de Carne' }, price: '16,00', desc: { fr: 'Roquette, parmesan, câpres', en: 'Arugula, parmesan, capers', pt: 'Rúcula, parmesão, alcaparras' } },
-      { name: { fr: 'Tartare de Saumon', en: 'Salmon Tartare', pt: 'Tartare de Salmão' }, price: '18,00', desc: { fr: 'Avocat, sésame, wasabi', en: 'Avocado, sesame, wasabi', pt: 'Abacate, gergelim, wasabi' } },
-      { name: { fr: 'Soupe du Jour', en: 'Soup of the Day', pt: 'Sopa do Dia' }, price: '9,00', desc: { fr: 'Préparation maison', en: 'Homemade preparation', pt: 'Preparo caseiro' } },
-      { name: { fr: 'Burrata Crémeuse', en: 'Creamy Burrata', pt: 'Burrata Cremosa' }, price: '15,00', desc: { fr: 'Tomates cerises, basilic, pesto', en: 'Cherry tomatoes, basil, pesto', pt: 'Tomates cereja, manjericão, pesto' } },
-      { name: { fr: 'Salade César', en: 'Caesar Salad', pt: 'Salada César' }, price: '14,00', desc: { fr: 'Poulet grillé, croûtons, parmesan', en: 'Grilled chicken, croutons, parmesan', pt: 'Frango grelhado, croutons, parmesão' } },
+      { name_fr: 'Carpaccio de Bœuf', name_en: 'Beef Carpaccio', name_pt: 'Carpaccio de Carne', price: 16.00, description_fr: 'Roquette, parmesan, câpres', description_en: 'Arugula, parmesan, capers', description_pt: 'Rúcula, parmesão, alcaparras' },
+      { name_fr: 'Tartare de Saumon', name_en: 'Salmon Tartare', name_pt: 'Tartare de Salmão', price: 18.00, description_fr: 'Avocat, sésame, wasabi', description_en: 'Avocado, sesame, wasabi', description_pt: 'Abacate, gergelim, wasabi' },
+      { name_fr: 'Soupe du Jour', name_en: 'Soup of the Day', name_pt: 'Sopa do Dia', price: 9.00, description_fr: 'Préparation maison', description_en: 'Homemade preparation', description_pt: 'Preparo caseiro' },
+      { name_fr: 'Burrata Crémeuse', name_en: 'Creamy Burrata', name_pt: 'Burrata Cremosa', price: 15.00, description_fr: 'Tomates cerises, basilic, pesto', description_en: 'Cherry tomatoes, basil, pesto', description_pt: 'Tomates cereja, manjericão, pesto' },
     ],
     mains: [
-      { name: { fr: 'Filet de Bœuf', en: 'Beef Fillet', pt: 'Filé Mignon' }, price: '32,00', desc: { fr: 'Sauce au poivre, légumes de saison', en: 'Pepper sauce, seasonal vegetables', pt: 'Molho de pimenta, legumes da estação' } },
-      { name: { fr: 'Magret de Canard', en: 'Duck Breast', pt: 'Magret de Pato' }, price: '28,00', desc: { fr: 'Sauce aux fruits rouges, purée', en: 'Red fruit sauce, mash', pt: 'Molho de frutas vermelhas, purê' } },
-      { name: { fr: 'Risotto aux Champignons', en: 'Mushroom Risotto', pt: 'Risoto de Cogumelos' }, price: '22,00', desc: { fr: 'Champignons forestiers, parmesan', en: 'Forest mushrooms, parmesan', pt: 'Cogumelos da floresta, parmesão' } },
-      { name: { fr: 'Côtelettes d\'Agneau', en: 'Lamb Chops', pt: 'Costelas de Cordeiro' }, price: '30,00', desc: { fr: 'Herbes de Provence, ratatouille', en: 'Provence herbs, ratatouille', pt: 'Ervas de Provence, ratatouille' } },
-      { name: { fr: 'Pasta Truffe', en: 'Truffle Pasta', pt: 'Massa com Trufa' }, price: '26,00', desc: { fr: 'Tagliatelles, crème de truffe noire', en: 'Tagliatelle, black truffle cream', pt: 'Tagliatelle, creme de trufa negra' } },
+      { name_fr: 'Filet de Bœuf', name_en: 'Beef Fillet', name_pt: 'Filé Mignon', price: 32.00, description_fr: 'Sauce au poivre, légumes de saison', description_en: 'Pepper sauce, seasonal vegetables', description_pt: 'Molho de pimenta, legumes da estação' },
+      { name_fr: 'Magret de Canard', name_en: 'Duck Breast', name_pt: 'Magret de Pato', price: 28.00, description_fr: 'Sauce aux fruits rouges, purée', description_en: 'Red fruit sauce, mash', description_pt: 'Molho de frutas vermelhas, purê' },
+      { name_fr: 'Risotto aux Champignons', name_en: 'Mushroom Risotto', name_pt: 'Risoto de Cogumelos', price: 22.00, description_fr: 'Champignons forestiers, parmesan', description_en: 'Forest mushrooms, parmesan', description_pt: 'Cogumelos da floresta, parmesão' },
     ],
     seafood: [
-      { name: { fr: 'Filet de Bar', en: 'Sea Bass Fillet', pt: 'Filé de Robalo' }, price: '28,00', desc: { fr: 'Beurre blanc, légumes grillés', en: 'White butter, grilled vegetables', pt: 'Manteiga branca, legumes grelhados' } },
-      { name: { fr: 'Gambas à l\'Ail', en: 'Garlic Prawns', pt: 'Camarões ao Alho' }, price: '24,00', desc: { fr: 'Ail, persil, huile d\'olive', en: 'Garlic, parsley, olive oil', pt: 'Alho, salsa, azeite' } },
-      { name: { fr: 'Moules Marinières', en: 'Mussels Marinière', pt: 'Mexilhões Marinière' }, price: '20,00', desc: { fr: 'Vin blanc, échalotes, crème', en: 'White wine, shallots, cream', pt: 'Vinho branco, chalotas, creme' } },
-      { name: { fr: 'Saumon Grillé', en: 'Grilled Salmon', pt: 'Salmão Grelhado' }, price: '26,00', desc: { fr: 'Sauce teriyaki, riz japonais', en: 'Teriyaki sauce, Japanese rice', pt: 'Molho teriyaki, arroz japonês' } },
+      { name_fr: 'Filet de Bar', name_en: 'Sea Bass Fillet', name_pt: 'Filé de Robalo', price: 28.00, description_fr: 'Beurre blanc, légumes grillés', description_en: 'White butter, grilled vegetables', description_pt: 'Manteiga branca, legumes grelhados' },
+      { name_fr: 'Gambas à l\'Ail', name_en: 'Garlic Prawns', name_pt: 'Camarões ao Alho', price: 24.00, description_fr: 'Ail, persil, huile d\'olive', description_en: 'Garlic, parsley, olive oil', description_pt: 'Alho, salsa, azeite' },
     ],
     desserts: [
-      { name: { fr: 'Tiramisu Maison', en: 'Homemade Tiramisu', pt: 'Tiramisu Caseiro' }, price: '10,00', desc: { fr: 'Recette traditionnelle', en: 'Traditional recipe', pt: 'Receita tradicional' } },
-      { name: { fr: 'Fondant au Chocolat', en: 'Chocolate Fondant', pt: 'Fondant de Chocolate' }, price: '11,00', desc: { fr: 'Cœur coulant, glace vanille', en: 'Molten center, vanilla ice cream', pt: 'Centro derretido, sorvete de baunilha' } },
-      { name: { fr: 'Crème Brûlée', en: 'Crème Brûlée', pt: 'Crème Brûlée' }, price: '9,00', desc: { fr: 'Vanille de Madagascar', en: 'Madagascar vanilla', pt: 'Baunilha de Madagascar' } },
-      { name: { fr: 'Tarte aux Fruits', en: 'Fruit Tart', pt: 'Torta de Frutas' }, price: '10,00', desc: { fr: 'Fruits de saison, crème pâtissière', en: 'Seasonal fruits, pastry cream', pt: 'Frutas da estação, creme de confeiteiro' } },
+      { name_fr: 'Tiramisu Maison', name_en: 'Homemade Tiramisu', name_pt: 'Tiramisu Caseiro', price: 10.00, description_fr: 'Recette traditionnelle', description_en: 'Traditional recipe', description_pt: 'Receita tradicional' },
+      { name_fr: 'Fondant au Chocolat', name_en: 'Chocolate Fondant', name_pt: 'Fondant de Chocolate', price: 11.00, description_fr: 'Cœur coulant, glace vanille', description_en: 'Molten center, vanilla ice cream', description_pt: 'Centro derretido, sorvete de baunilha' },
     ],
     drinks: [
-      { name: { fr: 'Vin Rouge (verre)', en: 'Red Wine (glass)', pt: 'Vinho Tinto (copo)' }, price: '7,00', desc: { fr: 'Sélection du sommelier', en: 'Sommelier selection', pt: 'Seleção do sommelier' } },
-      { name: { fr: 'Vin Blanc (verre)', en: 'White Wine (glass)', pt: 'Vinho Branco (copo)' }, price: '7,00', desc: { fr: 'Sélection du sommelier', en: 'Sommelier selection', pt: 'Seleção do sommelier' } },
-      { name: { fr: 'Champagne (coupe)', en: 'Champagne (glass)', pt: 'Champagne (taça)' }, price: '12,00', desc: { fr: 'Brut, Reims', en: 'Brut, Reims', pt: 'Brut, Reims' } },
-      { name: { fr: 'Cocktail Signature', en: 'Signature Cocktail', pt: 'Coquetel Signature' }, price: '14,00', desc: { fr: 'Création du barman', en: 'Bartender creation', pt: 'Criação do barman' } },
+      { name_fr: 'Vin Rouge (verre)', name_en: 'Red Wine (glass)', name_pt: 'Vinho Tinto (copo)', price: 7.00, description_fr: 'Sélection du sommelier', description_en: 'Sommelier selection', description_pt: 'Seleção do sommelier' },
+      { name_fr: 'Champagne (coupe)', name_en: 'Champagne (glass)', name_pt: 'Champagne (taça)', price: 12.00, description_fr: 'Brut, Reims', description_en: 'Brut, Reims', description_pt: 'Brut, Reims' },
     ]
+  };
+
+  useEffect(() => {
+    const fetchMenuItems = async () => {
+      try {
+        const response = await axios.get(`${API}/menu-items`);
+        if (response.data && response.data.length > 0) {
+          setMenuItems(response.data);
+        }
+      } catch (error) {
+        console.log('Using default menu items');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMenuItems();
+  }, []);
+
+  const categoryOrder = ['starters', 'mains', 'seafood', 'desserts', 'drinks'];
+
+  // Get items for a category - from DB or default
+  const getItemsForCategory = (category) => {
+    const dbItems = menuItems.filter(item => item.category === category && item.is_available !== false);
+    if (dbItems.length > 0) {
+      return dbItems;
+    }
+    return defaultMenuItems[category] || [];
   };
 
   return (
@@ -121,66 +151,84 @@ const Menu = () => {
       </section>
 
       {/* Menu Sections */}
-      {Object.entries(menuItems).map(([category, items], categoryIndex) => (
-        <section 
-          key={category}
-          className={`py-16 px-6 md:px-12 ${categoryIndex % 2 === 1 ? 'bg-[#121212]' : ''}`}
-          data-testid={`menu-section-${category}`}
-        >
-          <div className="max-w-4xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-            >
-              <h2 className="font-display text-3xl text-[#d4af37] text-center mb-12">
-                {c.categories[category]}
-              </h2>
+      {loading ? (
+        <div className="py-24 text-center">
+          <p className="text-white/50">Chargement...</p>
+        </div>
+      ) : (
+        categoryOrder.map((category, categoryIndex) => {
+          const items = getItemsForCategory(category);
+          if (items.length === 0) return null;
 
-              <div className="space-y-8">
-                {items.map((item, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, x: -20 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: index * 0.05 }}
-                    className="flex justify-between items-start border-b border-white/10 pb-6 group"
-                    data-testid={`menu-item-${category}-${index}`}
-                  >
-                    <div className="flex-1 pr-4">
-                      <h3 className="font-display text-xl text-white group-hover:text-[#d4af37] transition-colors">
-                        {item.name[language]}
-                      </h3>
-                      <p className="text-white/50 text-sm mt-1">
-                        {item.desc[language]}
-                      </p>
-                    </div>
-                    <div className="text-[#d4af37] font-display text-xl whitespace-nowrap">
-                      {item.price}€
-                    </div>
-                  </motion.div>
-                ))}
+          return (
+            <section 
+              key={category}
+              className={`py-16 px-6 md:px-12 ${categoryIndex % 2 === 1 ? 'bg-[#121212]' : ''}`}
+              data-testid={`menu-section-${category}`}
+            >
+              <div className="max-w-4xl mx-auto">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6 }}
+                >
+                  <h2 className="font-display text-3xl text-[#d4af37] text-center mb-12">
+                    {c.categories[category]}
+                  </h2>
+
+                  <div className="space-y-8">
+                    {items.map((item, index) => (
+                      <motion.div
+                        key={item.id || index}
+                        initial={{ opacity: 0, x: -20 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.5, delay: index * 0.05 }}
+                        className="flex justify-between items-start border-b border-white/10 pb-6 group"
+                        data-testid={`menu-item-${category}-${index}`}
+                      >
+                        <div className="flex-1 pr-4 flex gap-4">
+                          {item.image_url && (
+                            <img 
+                              src={item.image_url} 
+                              alt={getLocalizedField(item, 'name')} 
+                              className="w-16 h-16 object-cover flex-shrink-0"
+                            />
+                          )}
+                          <div>
+                            <h3 className="font-display text-xl text-white group-hover:text-[#d4af37] transition-colors">
+                              {getLocalizedField(item, 'name')}
+                            </h3>
+                            <p className="text-white/50 text-sm mt-1">
+                              {getLocalizedField(item, 'description')}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-[#d4af37] font-display text-xl whitespace-nowrap">
+                          {typeof item.price === 'number' ? item.price.toFixed(2).replace('.', ',') : item.price}€
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
               </div>
-            </motion.div>
-          </div>
-        </section>
-      ))}
+            </section>
+          );
+        })
+      )}
 
       {/* Bottom CTA */}
       <section className="py-20 px-6 md:px-12 text-center">
         <p className="text-white/50 text-sm mb-6">
-          {language === 'fr' ? 'Les prix sont en euros, service compris.' : 
-           language === 'en' ? 'Prices are in euros, service included.' : 
-           'Preços em euros, serviço incluído.'}
+          {c.price_note}
         </p>
         <Link
           to="/reservations"
           className="inline-flex items-center gap-3 bg-[#d4af37] text-black px-10 py-4 text-xs uppercase tracking-[0.2em] font-semibold hover:bg-white transition-all duration-300"
           data-testid="menu-reserve-cta"
         >
-          {language === 'fr' ? 'Réserver une Table' : language === 'en' ? 'Book a Table' : 'Reservar uma Mesa'}
+          {c.reserve_cta}
           <ArrowRight className="w-4 h-4" />
         </Link>
       </section>

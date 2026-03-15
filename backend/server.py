@@ -124,6 +124,64 @@ class SiteSettings(BaseModel):
     images: List[SiteImage] = []
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
+# Menu Item Model (for full menu/cardápio)
+class MenuItem(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    category: str  # "starters", "mains", "seafood", "desserts", "drinks"
+    name_fr: str
+    name_en: str
+    name_pt: str
+    description_fr: str = ""
+    description_en: str = ""
+    description_pt: str = ""
+    price: float
+    image_url: str = ""
+    is_available: bool = True
+    sort_order: int = 0
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class MenuItemCreate(BaseModel):
+    category: str
+    name_fr: str
+    name_en: str
+    name_pt: str
+    description_fr: str = ""
+    description_en: str = ""
+    description_pt: str = ""
+    price: float
+    image_url: str = ""
+    is_available: bool = True
+    sort_order: int = 0
+
+# Site Content Model (for texts)
+class SiteContent(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = "main"
+    # Hero Section
+    hero_subtitle_fr: str = "Restaurant · Luxembourg"
+    hero_subtitle_en: str = "Restaurant · Luxembourg"
+    hero_subtitle_pt: str = "Restaurante · Luxemburgo"
+    # About Section
+    about_title_fr: str = "Notre Histoire"
+    about_title_en: str = "Our History"
+    about_title_pt: str = "Nossa História"
+    about_text_fr: str = "Plus de 11 ans de cuisine professionnelle de haut niveau et une passion pour la cuisine et la pêche, Stephano Crupi a le défi de ravir les palais avec légèreté, qualité et amour."
+    about_text_en: str = "Over 11 years of high-level professional cuisine and a passion for cooking and fishing, Stephano Crupi has the challenge of delighting palates with lightness, quality and love."
+    about_text_pt: str = "Mais de 11 anos de cozinha profissional de alto nível e paixão por cozinhar e pescar, Stephano Crupi tem o desafio de encantar paladares com leveza, qualidade e amor."
+    about_quote_fr: str = "Cuisiner, c'est comme tisser un délicat manteau d'arômes, de couleurs, de saveurs, de textures."
+    about_quote_en: str = "Cooking is like weaving a delicate cloak of aromas, colors, flavors, textures."
+    about_quote_pt: str = "Cozinhar é como tecer um delicado manto de aromas, cores, sabores, texturas."
+    chef_name: str = "Stephano Crupi"
+    # Images
+    hero_image: str = "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1920&q=80"
+    about_image_1: str = "https://images.unsplash.com/photo-1600565193348-f74bd3c7ccdf?w=600&q=80"
+    about_image_2: str = "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&q=80"
+    about_image_3: str = "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=600&q=80"
+    chef_image: str = "https://images.unsplash.com/photo-1600565193348-f74bd3c7ccdf?w=800&q=80"
+    reservation_bg_image: str = "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1920&q=80"
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
 class ReservationCreate(BaseModel):
     name: str
     email: EmailStr
@@ -306,6 +364,67 @@ async def update_site_settings(data: SiteSettings, admin: dict = Depends(get_cur
         upsert=True
     )
     return data
+
+# --- SITE CONTENT ROUTES ---
+
+@api_router.get("/content", response_model=SiteContent)
+async def get_site_content():
+    content = await db.site_content.find_one({"id": "main"}, {"_id": 0})
+    if not content:
+        default = SiteContent()
+        return default
+    return content
+
+@api_router.put("/content", response_model=SiteContent)
+async def update_site_content(data: SiteContent, admin: dict = Depends(get_current_admin)):
+    data.id = "main"
+    data.updated_at = datetime.now(timezone.utc).isoformat()
+    
+    await db.site_content.update_one(
+        {"id": "main"},
+        {"$set": data.model_dump()},
+        upsert=True
+    )
+    return data
+
+# --- MENU ITEMS ROUTES (Cardápio Completo) ---
+
+@api_router.get("/menu-items", response_model=List[MenuItem])
+async def get_menu_items():
+    items = await db.menu_items.find({}, {"_id": 0}).sort("sort_order", 1).to_list(500)
+    return items
+
+@api_router.get("/menu-items/{category}", response_model=List[MenuItem])
+async def get_menu_items_by_category(category: str):
+    items = await db.menu_items.find({"category": category}, {"_id": 0}).sort("sort_order", 1).to_list(100)
+    return items
+
+@api_router.post("/menu-items", response_model=MenuItem)
+async def create_menu_item(data: MenuItemCreate, admin: dict = Depends(get_current_admin)):
+    item = MenuItem(**data.model_dump())
+    await db.menu_items.insert_one(item.model_dump())
+    return item
+
+@api_router.put("/menu-items/{item_id}", response_model=MenuItem)
+async def update_menu_item(item_id: str, data: MenuItemCreate, admin: dict = Depends(get_current_admin)):
+    update_data = data.model_dump()
+    
+    result = await db.menu_items.update_one(
+        {"id": item_id},
+        {"$set": update_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+    
+    item = await db.menu_items.find_one({"id": item_id}, {"_id": 0})
+    return item
+
+@api_router.delete("/menu-items/{item_id}")
+async def delete_menu_item(item_id: str, admin: dict = Depends(get_current_admin)):
+    result = await db.menu_items.delete_one({"id": item_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+    return {"message": "Menu item deleted"}
 
 # --- RESERVATIONS ROUTES ---
 
