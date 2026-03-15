@@ -157,6 +157,7 @@ const Menu = () => {
             src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1920&q=80"
             alt="BÉNI Menu"
             className="w-full h-full object-cover opacity-30"
+            loading="eager"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0a]/80 to-[#0a0a0a]" />
         </div>
@@ -224,6 +225,7 @@ const Menu = () => {
                             src={dish.image_url}
                             alt={getLocalizedField(dish, 'name')}
                             className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
+                            loading="lazy"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] to-transparent" />
                           <div className="absolute bottom-4 right-4 text-white/50 text-xs flex items-center gap-1">
@@ -434,18 +436,32 @@ const Menu = () => {
                               >
                                 <div className="p-6 bg-[#0a0a0a] border border-t-0 border-[#d4af37]/30">
                                   <div className="flex flex-col md:flex-row gap-6">
-                                    {/* Image */}
+                                    {/* Image with zoom transition */}
                                     {item.image_url && (
-                                      <div className="md:w-1/2">
-                                        <img
+                                      <motion.div 
+                                        className="md:w-1/2 overflow-hidden"
+                                        initial={{ scale: 0.8, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        transition={{ duration: 0.5, ease: "easeOut" }}
+                                      >
+                        <motion.img
                                           src={item.image_url}
                                           alt={getLocalizedField(item, 'name')}
                                           className="w-full h-64 object-cover"
+                                          loading="lazy"
+                                          initial={{ scale: 1.2 }}
+                                          animate={{ scale: 1 }}
+                                          transition={{ duration: 0.7, ease: "easeOut" }}
                                         />
-                                      </div>
+                                      </motion.div>
                                     )}
                                     {/* Description */}
-                                    <div className={item.image_url ? 'md:w-1/2' : 'w-full'}>
+                                    <motion.div 
+                                      className={item.image_url ? 'md:w-1/2' : 'w-full'}
+                                      initial={{ opacity: 0, x: 20 }}
+                                      animate={{ opacity: 1, x: 0 }}
+                                      transition={{ duration: 0.4, delay: 0.2 }}
+                                    >
                                       <h4 className="font-display text-2xl text-white mb-4">
                                         {getLocalizedField(item, 'name')}
                                       </h4>
@@ -457,7 +473,7 @@ const Menu = () => {
                                       <p className="text-[#d4af37] font-display text-3xl mt-6">
                                         {typeof item.price === 'number' ? item.price.toFixed(2).replace('.', ',') : item.price}€
                                       </p>
-                                    </div>
+                                    </motion.div>
                                   </div>
                                 </div>
                               </motion.div>
