@@ -1,0 +1,6 @@
+/* Global styles already defined in index.css */
+/* This file is kept for any additional component-specific styles */
+
+.App {
+  min-height: 100vh;
+}
