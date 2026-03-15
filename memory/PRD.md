@@ -34,25 +34,33 @@ Site para Restaurante BÉNI com conteúdo de https://www.restaurantbeni.com/ mas
 ### Pages
 - [x] Home - Hero, About teaser, Weekly Menu preview, Reservation CTA
 - [x] About (Notre Histoire) - History, Chef info, Philosophy
-- [x] Menu (Carte) - Full restaurant menu with prices
-- [x] Weekly Menu (Menu Semaine) - Current week dishes and pricing formulas
-- [x] Gallery (Galerie) - Photo gallery with filters (Ambiance/Plats/Équipe) and lightbox
+- [x] Menu (Carte) - Full restaurant menu with prices + Weekly Menu section
+- [x] Gallery (Galerie) - Photo gallery with filters (Ambiance/Plats/Équipe) and lightbox - **Dynamic from API**
 - [x] Reservations - Calendar date picker, time slots, guest count, form submission
-- [x] Admin Login - JWT authentication with bcrypt
-- [x] Admin Dashboard - Weekly menu editor, Reservations management
+- [x] Admin Login - JWT authentication with bcrypt (single default admin)
+- [x] Admin Dashboard - Weekly menu, Full menu (Cardápio), Gallery management, Site texts, Site images, Settings, Reservations, Users
 
 ### Backend API
-- [x] Auth: /api/auth/register, /api/auth/login, /api/auth/me
+- [x] Auth: /api/auth/register, /api/auth/login, /api/auth/me, /api/auth/admins
 - [x] Weekly Menu: /api/weekly-menu (GET active), /api/weekly-menu/all (admin), CRUD
+- [x] Menu Items: /api/menu-items (CRUD for full restaurant menu)
 - [x] Reservations: /api/reservations (POST public, GET admin), status update, delete
 - [x] Settings: /api/settings (GET/PUT)
+- [x] Content: /api/content (GET/PUT for site texts and images)
+- [x] Gallery: /api/gallery (GET/POST), /api/gallery/{id} (PUT/DELETE)
+- [x] Upload: /api/upload (POST for image uploads)
 
 ### Features
 - [x] Language switcher (FR/EN/PT) in navbar
 - [x] Responsive mobile navigation
-- [x] Gallery lightbox with prev/next navigation
+- [x] Gallery lightbox with prev/next navigation - **Dynamic content from database**
 - [x] Calendar-based reservation system
 - [x] Admin menu editor with dish categories
+- [x] Admin full menu (Cardápio) management with image upload
+- [x] Admin gallery management - Add/edit/delete images by category
+- [x] Admin site content editor (texts + images)
+- [x] Admin user management (create/delete admins)
+- [x] Image upload functionality with drag & drop
 - [x] Reservation status management (pending/confirmed/cancelled)
 
 ## Prioritized Backlog
@@ -61,14 +69,19 @@ Site para Restaurante BÉNI com conteúdo de https://www.restaurantbeni.com/ mas
 - ✅ Core pages and navigation
 - ✅ Weekly menu system
 - ✅ Reservation system
-- ✅ Admin authentication
+- ✅ Admin authentication (single default admin)
 - ✅ Multi-language support
+- ✅ Full menu (Cardápio) CRUD in admin
+- ✅ Site content editor (texts + images)
+- ✅ Gallery management in admin (add/edit/delete images by category)
+- ✅ Image upload system for admin
+- ✅ User management in admin
+- ✅ Deployment package (beni-restaurant.zip)
 
 ### P1 (High Priority) - NEXT
+- [ ] Complete Reservation System with full calendar view
 - [ ] Email notifications for reservations (integrate Resend/SendGrid)
 - [ ] WhatsApp integration for reservations
-- [ ] Image upload for admin (currently URL-based)
-- [ ] Site settings editor in admin (hours, address, phone)
 
 ### P2 (Medium Priority)
 - [ ] Reservation confirmation emails
@@ -83,7 +96,6 @@ Site para Restaurante BÉNI com conteúdo de https://www.restaurantbeni.com/ mas
 - [ ] Online payment for reservations
 
 ## Next Tasks
-1. Integrate email service for reservation notifications
-2. Add WhatsApp button for direct reservations
-3. Implement image upload system for admin
-4. Add site settings editor in admin dashboard
+1. Implement full reservation system with calendar view
+2. Integrate email service for reservation notifications
+3. Add WhatsApp button for direct reservations
