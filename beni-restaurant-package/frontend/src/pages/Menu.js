@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Calendar, UtensilsCrossed, Leaf, Fish } from 'lucide-react';
+import { ArrowRight, Calendar, UtensilsCrossed, Leaf, Fish, ChevronDown, X } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const Menu = () => {
-  const { language, getLocalizedField, t } = useLanguage();
+  const { language, getLocalizedField } = useLanguage();
   const [menuItems, setMenuItems] = useState([]);
   const [weeklyMenu, setWeeklyMenu] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [expandedItem, setExpandedItem] = useState(null);
 
   const content = {
     fr: {
@@ -21,6 +22,7 @@ const Menu = () => {
       weekly_subtitle: 'Nos créations de la semaine',
       reserve_cta: 'Réserver une Table',
       price_note: 'Les prix sont en euros, service compris.',
+      click_to_expand: 'Cliquez pour voir les détails',
       categories: {
         starters: 'Entrées',
         mains: 'Plats Principaux',
@@ -47,6 +49,7 @@ const Menu = () => {
       weekly_subtitle: 'Our creations of the week',
       reserve_cta: 'Book a Table',
       price_note: 'Prices are in euros, service included.',
+      click_to_expand: 'Click to see details',
       categories: {
         starters: 'Starters',
         mains: 'Main Courses',
@@ -73,6 +76,7 @@ const Menu = () => {
       weekly_subtitle: 'Nossas criações da semana',
       reserve_cta: 'Reservar uma Mesa',
       price_note: 'Preços em euros, serviço incluído.',
+      click_to_expand: 'Clique para ver detalhes',
       categories: {
         starters: 'Entradas',
         mains: 'Pratos Principais',
@@ -127,6 +131,10 @@ const Menu = () => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
     return date.toLocaleDateString(language === 'fr' ? 'fr-FR' : language === 'pt' ? 'pt-BR' : 'en-US', { day: 'numeric', month: 'long' });
+  };
+
+  const toggleExpand = (itemId) => {
+    setExpandedItem(expandedItem === itemId ? null : itemId);
   };
 
   const categoryOrder = ['starters', 'mains', 'seafood', 'desserts', 'drinks'];
@@ -198,11 +206,13 @@ const Menu = () => {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.6, delay: 0.1 * index }}
-                    className="group"
+                    className="group cursor-pointer"
+                    onClick={() => dish.image_url && toggleExpand(`weekly-${dish.id}`)}
                     data-testid={`weekly-dish-${dish.category}`}
                   >
                     <div className="bg-[#0a0a0a] border border-white/10 overflow-hidden hover:border-[#d4af37]/50 transition-all duration-500">
-                      {dish.image_url ? (
+                      {/* Only show image container if there's an image */}
+                      {dish.image_url && (
                         <div className="relative h-56 overflow-hidden">
                           <img
                             src={dish.image_url}
@@ -210,10 +220,9 @@ const Menu = () => {
                             className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] to-transparent" />
-                        </div>
-                      ) : (
-                        <div className="h-56 bg-[#1a1a1a] flex items-center justify-center">
-                          {getCategoryIcon(dish.category)}
+                          <div className="absolute bottom-4 right-4 text-white/50 text-xs flex items-center gap-1">
+                            <ChevronDown className="w-4 h-4" />
+                          </div>
                         </div>
                       )}
                       
@@ -228,12 +237,35 @@ const Menu = () => {
                           {getLocalizedField(dish, 'name')}
                         </h3>
                         {getLocalizedField(dish, 'description') && (
-                          <p className="text-white/50 text-sm">
+                          <p className="text-white/50 text-sm line-clamp-2">
                             {getLocalizedField(dish, 'description')}
                           </p>
                         )}
                       </div>
                     </div>
+
+                    {/* Expanded View */}
+                    <AnimatePresence>
+                      {expandedItem === `weekly-${dish.id}` && dish.image_url && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="bg-[#0a0a0a] border border-[#d4af37]/30 border-t-0 overflow-hidden"
+                        >
+                          <div className="p-6">
+                            <img
+                              src={dish.image_url}
+                              alt={getLocalizedField(dish, 'name')}
+                              className="w-full h-64 object-cover mb-4"
+                            />
+                            <p className="text-white/70 text-sm leading-relaxed">
+                              {getLocalizedField(dish, 'description')}
+                            </p>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </motion.div>
                 ))}
               </div>
@@ -342,39 +374,92 @@ const Menu = () => {
                     {c.categories[category]}
                   </h2>
 
-                  <div className="space-y-8">
-                    {items.map((item, index) => (
-                      <motion.div
-                        key={item.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        whileInView={{ opacity: 1, x: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.5, delay: index * 0.05 }}
-                        className="flex justify-between items-start border-b border-white/10 pb-6 group"
-                        data-testid={`menu-item-${category}-${index}`}
-                      >
-                        <div className="flex-1 pr-4 flex gap-4">
-                          {item.image_url && (
-                            <img 
-                              src={item.image_url} 
-                              alt={getLocalizedField(item, 'name')} 
-                              className="w-16 h-16 object-cover flex-shrink-0"
-                            />
-                          )}
-                          <div>
-                            <h3 className="font-display text-xl text-white group-hover:text-[#d4af37] transition-colors">
-                              {getLocalizedField(item, 'name')}
-                            </h3>
-                            <p className="text-white/50 text-sm mt-1">
-                              {getLocalizedField(item, 'description')}
-                            </p>
+                  <div className="space-y-4">
+                    {items.map((item, index) => {
+                      const isExpanded = expandedItem === item.id;
+                      const hasImage = !!item.image_url;
+                      
+                      return (
+                        <motion.div
+                          key={item.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          whileInView={{ opacity: 1, x: 0 }}
+                          viewport={{ once: true }}
+                          transition={{ duration: 0.5, delay: index * 0.05 }}
+                          className="group"
+                          data-testid={`menu-item-${category}-${index}`}
+                        >
+                          {/* Item Row */}
+                          <div 
+                            className={`flex justify-between items-center p-4 border border-white/10 transition-all duration-300 ${
+                              hasImage ? 'cursor-pointer hover:border-[#d4af37]/50' : ''
+                            } ${isExpanded ? 'border-[#d4af37]/50 bg-white/5' : ''}`}
+                            onClick={() => hasImage && toggleExpand(item.id)}
+                          >
+                            <div className="flex-1 pr-4">
+                              <div className="flex items-center gap-3">
+                                <h3 className="font-display text-xl text-white group-hover:text-[#d4af37] transition-colors">
+                                  {getLocalizedField(item, 'name')}
+                                </h3>
+                                {hasImage && (
+                                  <ChevronDown className={`w-4 h-4 text-[#d4af37] transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                                )}
+                              </div>
+                              {!isExpanded && getLocalizedField(item, 'description') && (
+                                <p className="text-white/50 text-sm mt-1 line-clamp-1">
+                                  {getLocalizedField(item, 'description')}
+                                </p>
+                              )}
+                            </div>
+                            <div className="text-[#d4af37] font-display text-xl whitespace-nowrap">
+                              {typeof item.price === 'number' ? item.price.toFixed(2).replace('.', ',') : item.price}€
+                            </div>
                           </div>
-                        </div>
-                        <div className="text-[#d4af37] font-display text-xl whitespace-nowrap">
-                          {typeof item.price === 'number' ? item.price.toFixed(2).replace('.', ',') : item.price}€
-                        </div>
-                      </motion.div>
-                    ))}
+
+                          {/* Expanded Content */}
+                          <AnimatePresence>
+                            {isExpanded && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.3 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="p-6 bg-[#0a0a0a] border border-t-0 border-[#d4af37]/30">
+                                  <div className="flex flex-col md:flex-row gap-6">
+                                    {/* Image */}
+                                    {item.image_url && (
+                                      <div className="md:w-1/2">
+                                        <img
+                                          src={item.image_url}
+                                          alt={getLocalizedField(item, 'name')}
+                                          className="w-full h-64 object-cover"
+                                        />
+                                      </div>
+                                    )}
+                                    {/* Description */}
+                                    <div className={item.image_url ? 'md:w-1/2' : 'w-full'}>
+                                      <h4 className="font-display text-2xl text-white mb-4">
+                                        {getLocalizedField(item, 'name')}
+                                      </h4>
+                                      {getLocalizedField(item, 'description') && (
+                                        <p className="text-white/70 leading-relaxed">
+                                          {getLocalizedField(item, 'description')}
+                                        </p>
+                                      )}
+                                      <p className="text-[#d4af37] font-display text-3xl mt-6">
+                                        {typeof item.price === 'number' ? item.price.toFixed(2).replace('.', ',') : item.price}€
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </motion.div>
+                      );
+                    })}
                   </div>
                 </motion.div>
               </div>
