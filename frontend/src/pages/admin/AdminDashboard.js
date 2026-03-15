@@ -870,15 +870,6 @@ const AdminDashboard = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                           {galleryImages.filter(img => img.category === category).map(image => (
                             <div key={image.id} className="bg-[#121212] border border-white/10 p-4 space-y-4" data-testid={`gallery-item-${image.id}`}>
-                              <div className="aspect-video bg-white/5 relative overflow-hidden">
-                                {image.url ? (
-                                  <img src={image.url} alt={image.alt_fr || 'Gallery image'} className="w-full h-full object-cover" />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-white/30">
-                                    <Images className="w-12 h-12" />
-                                  </div>
-                                )}
-                              </div>
                               <ImageUpload value={image.url || ''} onChange={(url) => updateGalleryImage(image.id, 'url', url)} />
                               <div className="grid grid-cols-3 gap-2">
                                 <Input 
