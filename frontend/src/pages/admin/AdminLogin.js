@@ -11,16 +11,14 @@ import { toast } from 'sonner';
 
 const AdminLogin = () => {
   const { t } = useLanguage();
-  const { login, register } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
   
-  const [isRegister, setIsRegister] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
-    password: '',
-    name: ''
+    password: ''
   });
 
   const handleChange = (e) => {
@@ -33,22 +31,12 @@ const AdminLogin = () => {
     setLoading(true);
 
     try {
-      if (isRegister) {
-        if (!formData.name) {
-          toast.error('Veuillez entrer votre nom');
-          setLoading(false);
-          return;
-        }
-        await register(formData.email, formData.password, formData.name);
-        toast.success('Compte créé avec succès!');
-      } else {
-        await login(formData.email, formData.password);
-        toast.success('Connexion réussie!');
-      }
+      await login(formData.email, formData.password);
+      toast.success('Connexion réussie!');
       navigate('/admin/dashboard');
     } catch (error) {
       console.error('Auth error:', error);
-      toast.error(error.response?.data?.detail || 'Erreur d\'authentification');
+      toast.error(error.response?.data?.detail || 'Identifiants incorrects');
     } finally {
       setLoading(false);
     }
@@ -78,39 +66,22 @@ const AdminLogin = () => {
           <div className="text-center mb-10">
             <h1 className="font-display text-4xl text-white mb-2">BÉNI</h1>
             <p className="text-xs uppercase tracking-[0.2em] text-[#d4af37]">
-              {isRegister ? t('admin_register') : t('admin_login')}
+              Administration
             </p>
           </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6" data-testid="admin-login-form">
-            {isRegister && (
-              <div className="space-y-2">
-                <Label className="text-xs uppercase tracking-[0.15em] text-white/70">
-                  {t('admin_name')}
-                </Label>
-                <Input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="Votre nom"
-                  className="h-14 bg-transparent border-white/20 text-white placeholder:text-white/30 focus:border-[#d4af37]"
-                  data-testid="name-input"
-                />
-              </div>
-            )}
-
             <div className="space-y-2">
               <Label className="text-xs uppercase tracking-[0.15em] text-white/70">
-                {t('admin_email')}
+                Identifiant
               </Label>
               <Input
-                type="email"
+                type="text"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                placeholder="admin@beni.lu"
+                placeholder="admin"
                 className="h-14 bg-transparent border-white/20 text-white placeholder:text-white/30 focus:border-[#d4af37]"
                 data-testid="email-input"
               />
@@ -118,7 +89,7 @@ const AdminLogin = () => {
 
             <div className="space-y-2">
               <Label className="text-xs uppercase tracking-[0.15em] text-white/70">
-                {t('admin_password')}
+                Mot de passe
               </Label>
               <div className="relative">
                 <Input
@@ -147,21 +118,9 @@ const AdminLogin = () => {
               className="w-full h-14 bg-[#d4af37] text-black text-xs uppercase tracking-[0.2em] font-semibold hover:bg-white transition-all duration-300 disabled:opacity-50"
               data-testid="submit-btn"
             >
-              {loading ? t('loading') : (isRegister ? t('admin_register') : t('admin_signin'))}
+              {loading ? 'Connexion...' : 'Se Connecter'}
             </Button>
           </form>
-
-          {/* Toggle Register/Login */}
-          <div className="mt-8 text-center">
-            <button
-              type="button"
-              onClick={() => setIsRegister(!isRegister)}
-              className="text-white/50 text-sm hover:text-[#d4af37] transition-colors"
-              data-testid="toggle-auth-mode"
-            >
-              {isRegister ? 'Déjà un compte? Se connecter' : 'Pas de compte? S\'inscrire'}
-            </button>
-          </div>
         </div>
       </motion.div>
     </main>

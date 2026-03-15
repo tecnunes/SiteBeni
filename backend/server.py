@@ -44,12 +44,12 @@ security = HTTPBearer()
 # --- MODELS ---
 
 class AdminCreate(BaseModel):
-    email: EmailStr
+    email: str
     password: str
     name: str
 
 class AdminLogin(BaseModel):
-    email: EmailStr
+    email: str
     password: str
 
 class AdminResponse(BaseModel):
@@ -237,8 +237,8 @@ async def get_current_admin(credentials: HTTPAuthorizationCredentials = Depends(
 # --- AUTH ROUTES ---
 
 @api_router.post("/auth/register", response_model=TokenResponse)
-async def register_admin(data: AdminCreate):
-    # Check if admin exists
+async def register_admin(data: AdminCreate, current_admin: dict = Depends(get_current_admin)):
+    # Only authenticated admins can create new admins
     existing = await db.admins.find_one({"email": data.email}, {"_id": 0})
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -263,6 +263,22 @@ async def register_admin(data: AdminCreate):
             created_at=admin_doc["created_at"]
         )
     )
+
+@api_router.get("/auth/admins", response_model=List[AdminResponse])
+async def get_all_admins(current_admin: dict = Depends(get_current_admin)):
+    admins = await db.admins.find({}, {"_id": 0, "password": 0}).to_list(100)
+    return [AdminResponse(**a) for a in admins]
+
+@api_router.delete("/auth/admins/{admin_id}")
+async def delete_admin(admin_id: str, current_admin: dict = Depends(get_current_admin)):
+    # Prevent deleting yourself
+    if current_admin["id"] == admin_id:
+        raise HTTPException(status_code=400, detail="Cannot delete yourself")
+    
+    result = await db.admins.delete_one({"id": admin_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Admin not found")
+    return {"message": "Admin deleted"}
 
 @api_router.post("/auth/login", response_model=TokenResponse)
 async def login_admin(data: AdminLogin):
@@ -530,6 +546,21 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+@app.on_event("startup")
+async def startup_event():
+    # Create default admin if not exists
+    existing_admin = await db.admins.find_one({"email": "admin"}, {"_id": 0})
+    if not existing_admin:
+        admin_doc = {
+            "id": str(uuid.uuid4()),
+            "email": "admin",
+            "password": hash_password("#Sti93qn06301616"),
+            "name": "Administrateur",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.admins.insert_one(admin_doc)
+        print("Default admin created: admin / #Sti93qn06301616")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

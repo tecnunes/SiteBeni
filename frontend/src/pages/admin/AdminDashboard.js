@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Menu, X, Home, Calendar, UtensilsCrossed, Settings, LogOut, 
-  Plus, Trash2, Save, Image, Check, XCircle, FileText, BookOpen
+  Plus, Trash2, Save, Image, Check, XCircle, FileText, BookOpen, Users
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -38,6 +38,8 @@ const AdminDashboard = () => {
   const [menuItems, setMenuItems] = useState([]);
   const [siteContent, setSiteContent] = useState(null);
   const [siteSettings, setSiteSettings] = useState(null);
+  const [admins, setAdmins] = useState([]);
+  const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '' });
 
   // Menu form state
   const [menuForm, setMenuForm] = useState({
@@ -59,12 +61,13 @@ const AdminDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [menuRes, reservationsRes, menuItemsRes, contentRes, settingsRes] = await Promise.all([
+      const [menuRes, reservationsRes, menuItemsRes, contentRes, settingsRes, adminsRes] = await Promise.all([
         axios.get(`${API}/weekly-menu`),
         axios.get(`${API}/reservations`),
         axios.get(`${API}/menu-items`),
         axios.get(`${API}/content`),
-        axios.get(`${API}/settings`)
+        axios.get(`${API}/settings`),
+        axios.get(`${API}/auth/admins`)
       ]);
       
       if (menuRes.data) {
@@ -80,6 +83,7 @@ const AdminDashboard = () => {
       setMenuItems(menuItemsRes.data || []);
       setSiteContent(contentRes.data || {});
       setSiteSettings(settingsRes.data || {});
+      setAdmins(adminsRes.data || []);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -261,6 +265,36 @@ const AdminDashboard = () => {
     }
   };
 
+  // Admin Users Functions
+  const createAdmin = async () => {
+    if (!newAdmin.name || !newAdmin.email || !newAdmin.password) {
+      toast.error('Veuillez remplir tous les champs');
+      return;
+    }
+    setSaving(true);
+    try {
+      await axios.post(`${API}/auth/register`, newAdmin);
+      toast.success('Administrateur créé!');
+      setNewAdmin({ name: '', email: '', password: '' });
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erreur lors de la création');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteAdmin = async (adminId) => {
+    if (!window.confirm('Supprimer cet administrateur?')) return;
+    try {
+      await axios.delete(`${API}/auth/admins/${adminId}`);
+      toast.success('Administrateur supprimé');
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erreur lors de la suppression');
+    }
+  };
+
   const sidebarItems = [
     { id: 'weekly', icon: UtensilsCrossed, label: 'Menu Semaine' },
     { id: 'cardapio', icon: BookOpen, label: 'Cardápio Completo' },
@@ -268,6 +302,7 @@ const AdminDashboard = () => {
     { id: 'images', icon: Image, label: 'Images du Site' },
     { id: 'settings', icon: Settings, label: 'Paramètres' },
     { id: 'reservations', icon: Calendar, label: 'Réservations' },
+    { id: 'users', icon: Users, label: 'Utilisateurs' },
   ];
 
   const dishCategories = [
@@ -739,6 +774,78 @@ const AdminDashboard = () => {
                       </div>
                     ))
                   )}
+                </motion.div>
+              )}
+
+              {/* Users Tab */}
+              {activeTab === 'users' && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+                  {/* Create New Admin */}
+                  <div className="bg-[#121212] border border-white/10 p-6 space-y-6">
+                    <h2 className="text-white text-lg font-medium border-b border-white/10 pb-4">Créer un Administrateur</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs text-white/70">Nom</Label>
+                        <Input
+                          value={newAdmin.name}
+                          onChange={(e) => setNewAdmin({...newAdmin, name: e.target.value})}
+                          className="bg-transparent border-white/20 text-white"
+                          placeholder="Nom complet"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-white/70">Identifiant</Label>
+                        <Input
+                          value={newAdmin.email}
+                          onChange={(e) => setNewAdmin({...newAdmin, email: e.target.value})}
+                          className="bg-transparent border-white/20 text-white"
+                          placeholder="Identifiant de connexion"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-white/70">Mot de passe</Label>
+                        <Input
+                          type="password"
+                          value={newAdmin.password}
+                          onChange={(e) => setNewAdmin({...newAdmin, password: e.target.value})}
+                          className="bg-transparent border-white/20 text-white"
+                          placeholder="Mot de passe sécurisé"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end">
+                      <Button onClick={createAdmin} disabled={saving} className="bg-[#d4af37] text-black hover:bg-white">
+                        <Plus className="w-4 h-4 mr-2" />Créer
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* List of Admins */}
+                  <div className="bg-[#121212] border border-white/10 p-6 space-y-4">
+                    <h2 className="text-white text-lg font-medium border-b border-white/10 pb-4">Administrateurs ({admins.length})</h2>
+                    {admins.map(adminUser => (
+                      <div key={adminUser.id} className="flex items-center justify-between p-4 bg-white/5 border border-white/10">
+                        <div>
+                          <p className="text-white font-medium">{adminUser.name}</p>
+                          <p className="text-white/50 text-sm">{adminUser.email}</p>
+                          <p className="text-white/30 text-xs">Créé le {new Date(adminUser.created_at).toLocaleDateString('fr-FR')}</p>
+                        </div>
+                        {adminUser.id !== admin?.id && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => deleteAdmin(adminUser.id)}
+                            className="border-red-500 text-red-500 hover:bg-red-500/10"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {adminUser.id === admin?.id && (
+                          <span className="text-xs text-[#d4af37] uppercase tracking-wider">Vous</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </motion.div>
               )}
             </>
