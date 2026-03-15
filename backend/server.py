@@ -620,6 +620,38 @@ async def startup_event():
         }
         await db.admins.insert_one(admin_doc)
         print("Default admin created: admin / #Sti93qn06301616")
+    
+    # Create default gallery images if gallery is empty
+    gallery_count = await db.gallery.count_documents({})
+    if gallery_count == 0:
+        default_images = [
+            # Ambiance
+            {"url": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80", "category": "ambiance", "alt_fr": "Intérieur du restaurant", "alt_en": "Restaurant interior", "alt_pt": "Interior do restaurante", "sort_order": 0},
+            {"url": "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800&q=80", "category": "ambiance", "alt_fr": "Salle à manger", "alt_en": "Dining area", "alt_pt": "Área de refeições", "sort_order": 1},
+            {"url": "https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?w=800&q=80", "category": "ambiance", "alt_fr": "Bar", "alt_en": "Bar area", "alt_pt": "Área do bar", "sort_order": 2},
+            {"url": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80", "category": "ambiance", "alt_fr": "Ambiance soirée", "alt_en": "Evening ambiance", "alt_pt": "Ambiente noturno", "sort_order": 3},
+            {"url": "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800&q=80", "category": "ambiance", "alt_fr": "Terrasse", "alt_en": "Restaurant terrace", "alt_pt": "Terraço do restaurante", "sort_order": 4},
+            {"url": "https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800&q=80", "category": "ambiance", "alt_fr": "Cave à vin", "alt_en": "Wine cellar", "alt_pt": "Adega", "sort_order": 5},
+            # Dishes
+            {"url": "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80", "category": "dishes", "alt_fr": "Plat gastronomique", "alt_en": "Gourmet dish", "alt_pt": "Prato gourmet", "sort_order": 0},
+            {"url": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80", "category": "dishes", "alt_fr": "Repas", "alt_en": "Plated meal", "alt_pt": "Refeição", "sort_order": 1},
+            {"url": "https://images.unsplash.com/photo-1544025162-d76694265947?w=800&q=80", "category": "dishes", "alt_fr": "Côtes de porc", "alt_en": "BBQ ribs", "alt_pt": "Costelas", "sort_order": 2},
+            {"url": "https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=800&q=80", "category": "dishes", "alt_fr": "Pâtes", "alt_en": "Pasta dish", "alt_pt": "Massa", "sort_order": 3},
+            {"url": "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=800&q=80", "category": "dishes", "alt_fr": "Salade", "alt_en": "Salad bowl", "alt_pt": "Salada", "sort_order": 4},
+            {"url": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&q=80", "category": "dishes", "alt_fr": "Pizza", "alt_en": "Pizza", "alt_pt": "Pizza", "sort_order": 5},
+            {"url": "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=800&q=80", "category": "dishes", "alt_fr": "Crêpes", "alt_en": "Pancakes", "alt_pt": "Panquecas", "sort_order": 6},
+            {"url": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80", "category": "dishes", "alt_fr": "Bowl healthy", "alt_en": "Healthy bowl", "alt_pt": "Bowl saudável", "sort_order": 7},
+            {"url": "https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=800&q=80", "category": "dishes", "alt_fr": "Dessert", "alt_en": "Cake dessert", "alt_pt": "Sobremesa", "sort_order": 8},
+            # Team
+            {"url": "https://images.unsplash.com/photo-1600565193348-f74bd3c7ccdf?w=800&q=80", "category": "team", "alt_fr": "Chef en cuisine", "alt_en": "Chef cooking", "alt_pt": "Chef cozinhando", "sort_order": 0},
+            {"url": "https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=800&q=80", "category": "team", "alt_fr": "Équipe cuisine", "alt_en": "Kitchen team", "alt_pt": "Equipe de cozinha", "sort_order": 1},
+            {"url": "https://images.unsplash.com/photo-1581299894007-aaa50297cf16?w=800&q=80", "category": "team", "alt_fr": "Portrait du chef", "alt_en": "Chef portrait", "alt_pt": "Retrato do chef", "sort_order": 2},
+            {"url": "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80", "category": "team", "alt_fr": "En cuisine", "alt_en": "Cooking process", "alt_pt": "Processo de cozinha", "sort_order": 3},
+        ]
+        for img_data in default_images:
+            image = GalleryImage(**img_data)
+            await db.gallery.insert_one(image.model_dump())
+        print(f"Created {len(default_images)} default gallery images")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
