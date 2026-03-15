@@ -179,7 +179,30 @@ const Menu = () => {
       </section>
 
       {/* Weekly Menu Section */}
-      {weeklyMenu && (mainDishes.length > 0 || desserts.length > 0) && (
+      {loading ? (
+        /* Skeleton Loading for Weekly Menu */
+        <section className="py-16 px-6 md:px-12 bg-[#121212]" data-testid="weekly-menu-loading">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-12">
+              <div className="h-4 w-48 bg-white/10 rounded mx-auto mb-4 animate-pulse" />
+              <div className="h-12 w-96 bg-white/10 rounded mx-auto mb-4 animate-pulse" />
+              <div className="h-4 w-64 bg-white/10 rounded mx-auto animate-pulse" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-[#0a0a0a] border border-white/10 overflow-hidden">
+                  <div className="h-56 bg-white/5 animate-pulse" />
+                  <div className="p-6">
+                    <div className="h-4 w-24 bg-[#d4af37]/20 rounded mb-3 animate-pulse" />
+                    <div className="h-6 w-full bg-white/10 rounded mb-2 animate-pulse" />
+                    <div className="h-4 w-3/4 bg-white/5 rounded animate-pulse" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : weeklyMenu && (mainDishes.length > 0 || desserts.length > 0) ? (
         <section className="py-16 px-6 md:px-12 bg-[#121212]" data-testid="weekly-menu-section">
           <div className="max-w-6xl mx-auto">
             <motion.div
@@ -346,14 +369,16 @@ const Menu = () => {
             </motion.div>
           </div>
         </section>
-      )}
+      ) : null}
 
-      {/* Divider */}
-      <div className="py-8 px-6 md:px-12">
-        <div className="max-w-4xl mx-auto">
-          <div className="h-px bg-gradient-to-r from-transparent via-[#d4af37]/50 to-transparent" />
+      {/* Divider - only show if weekly menu exists or menu items exist */}
+      {(weeklyMenu || menuItems.length > 0) && !loading && (
+        <div className="py-8 px-6 md:px-12">
+          <div className="max-w-4xl mx-auto">
+            <div className="h-px bg-gradient-to-r from-transparent via-[#d4af37]/50 to-transparent" />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Full Menu Sections */}
       {loading ? (
