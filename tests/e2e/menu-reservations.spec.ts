@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { dismissToasts } from '../fixtures/helpers';
 
-const BASE_URL = 'https://la-cuisine-weekly.preview.emergentagent.com';
+const BASE_URL = 'https://beni-photo-editor.preview.emergentagent.com';
 
 test.describe('Weekly Menu & Reservations', () => {
   test.beforeEach(async ({ page }) => {

@@ -5,18 +5,20 @@ import uuid
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
+# Default admin credentials
+DEFAULT_ADMIN_EMAIL = "admin"
+DEFAULT_ADMIN_PASSWORD = "#Sti93qn06301616"
+
 
 @pytest.fixture(scope="module")
 def admin_token():
-    """Create an admin and return token for module-level tests"""
-    unique = str(uuid.uuid4())[:8]
-    response = requests.post(f"{BASE_URL}/api/auth/register", json={
-        "email": f"menutest_{unique}@beni.lu",
-        "password": "Test123!",
-        "name": f"Menu Tester {unique}"
+    """Login as default admin for module-level tests"""
+    response = requests.post(f"{BASE_URL}/api/auth/login", json={
+        "email": DEFAULT_ADMIN_EMAIL,
+        "password": DEFAULT_ADMIN_PASSWORD
     })
     if response.status_code != 200:
-        pytest.skip("Could not create admin for menu tests")
+        pytest.skip("Could not login as admin for tests")
     return response.json()["access_token"]
 
 

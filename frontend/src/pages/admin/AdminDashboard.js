@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Menu, X, Home, Calendar, UtensilsCrossed, Settings, LogOut, 
-  Plus, Trash2, Save, Image, Check, XCircle, FileText, BookOpen, Users
+  Plus, Trash2, Save, Image, Check, XCircle, FileText, BookOpen, Users, Images
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -39,6 +39,7 @@ const AdminDashboard = () => {
   const [siteContent, setSiteContent] = useState(null);
   const [siteSettings, setSiteSettings] = useState(null);
   const [admins, setAdmins] = useState([]);
+  const [galleryImages, setGalleryImages] = useState([]);
   const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '' });
 
   // Menu form state
@@ -61,13 +62,14 @@ const AdminDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [menuRes, reservationsRes, menuItemsRes, contentRes, settingsRes, adminsRes] = await Promise.all([
+      const [menuRes, reservationsRes, menuItemsRes, contentRes, settingsRes, adminsRes, galleryRes] = await Promise.all([
         axios.get(`${API}/weekly-menu`),
         axios.get(`${API}/reservations`),
         axios.get(`${API}/menu-items`),
         axios.get(`${API}/content`),
         axios.get(`${API}/settings`),
-        axios.get(`${API}/auth/admins`)
+        axios.get(`${API}/auth/admins`),
+        axios.get(`${API}/gallery`)
       ]);
       
       if (menuRes.data) {
@@ -84,6 +86,7 @@ const AdminDashboard = () => {
       setSiteContent(contentRes.data || {});
       setSiteSettings(settingsRes.data || {});
       setAdmins(adminsRes.data || []);
+      setGalleryImages(galleryRes.data || []);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -295,9 +298,77 @@ const AdminDashboard = () => {
     }
   };
 
+  // Gallery Functions
+  const addGalleryImage = (category) => {
+    const newImage = {
+      id: `new-${Date.now()}`,
+      url: '',
+      category,
+      alt_fr: '',
+      alt_en: '',
+      alt_pt: '',
+      sort_order: galleryImages.filter(i => i.category === category).length,
+      isNew: true
+    };
+    setGalleryImages(prev => [...prev, newImage]);
+  };
+
+  const updateGalleryImage = (imageId, field, value) => {
+    setGalleryImages(prev => prev.map(img => 
+      img.id === imageId ? { ...img, [field]: value } : img
+    ));
+  };
+
+  const saveGalleryImage = async (image) => {
+    if (!image.url) {
+      toast.error('Veuillez ajouter une image');
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload = {
+        url: image.url,
+        category: image.category,
+        alt_fr: image.alt_fr || '',
+        alt_en: image.alt_en || '',
+        alt_pt: image.alt_pt || '',
+        sort_order: image.sort_order || 0
+      };
+
+      if (image.isNew) {
+        await axios.post(`${API}/gallery`, payload);
+      } else {
+        await axios.put(`${API}/gallery/${image.id}`, payload);
+      }
+      
+      toast.success('Image sauvegardée!');
+      fetchData();
+    } catch (error) {
+      toast.error('Erreur lors de la sauvegarde');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteGalleryImage = async (imageId, isNew) => {
+    if (isNew) {
+      setGalleryImages(prev => prev.filter(i => i.id !== imageId));
+      return;
+    }
+    if (!window.confirm('Supprimer cette image?')) return;
+    try {
+      await axios.delete(`${API}/gallery/${imageId}`);
+      toast.success('Image supprimée');
+      fetchData();
+    } catch (error) {
+      toast.error('Erreur lors de la suppression');
+    }
+  };
+
   const sidebarItems = [
     { id: 'weekly', icon: UtensilsCrossed, label: 'Menu Semaine' },
     { id: 'cardapio', icon: BookOpen, label: 'Cardápio Completo' },
+    { id: 'gallery', icon: Images, label: 'Galerie' },
     { id: 'content', icon: FileText, label: 'Textes du Site' },
     { id: 'images', icon: Image, label: 'Images du Site' },
     { id: 'settings', icon: Settings, label: 'Paramètres' },
@@ -774,6 +845,79 @@ const AdminDashboard = () => {
                       </div>
                     ))
                   )}
+                </motion.div>
+              )}
+
+              {/* Gallery Tab */}
+              {activeTab === 'gallery' && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+                  <Tabs defaultValue="ambiance" className="w-full">
+                    <TabsList className="bg-[#121212] border border-white/10 p-1 mb-6">
+                      <TabsTrigger value="ambiance" className="data-[state=active]:bg-[#d4af37] data-[state=active]:text-black">Ambiance</TabsTrigger>
+                      <TabsTrigger value="dishes" className="data-[state=active]:bg-[#d4af37] data-[state=active]:text-black">Plats</TabsTrigger>
+                      <TabsTrigger value="team" className="data-[state=active]:bg-[#d4af37] data-[state=active]:text-black">Équipe</TabsTrigger>
+                    </TabsList>
+
+                    {['ambiance', 'dishes', 'team'].map(category => (
+                      <TabsContent key={category} value={category} className="space-y-4">
+                        <div className="flex justify-between items-center mb-4">
+                          <h3 className="text-white text-lg capitalize">{category === 'ambiance' ? 'Ambiance' : category === 'dishes' ? 'Plats' : 'Équipe'}</h3>
+                          <Button onClick={() => addGalleryImage(category)} className="bg-[#d4af37] text-black hover:bg-white">
+                            <Plus className="w-4 h-4 mr-2" />Ajouter
+                          </Button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {galleryImages.filter(img => img.category === category).map(image => (
+                            <div key={image.id} className="bg-[#121212] border border-white/10 p-4 space-y-4" data-testid={`gallery-item-${image.id}`}>
+                              <div className="aspect-video bg-white/5 relative overflow-hidden">
+                                {image.url ? (
+                                  <img src={image.url} alt={image.alt_fr || 'Gallery image'} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-white/30">
+                                    <Images className="w-12 h-12" />
+                                  </div>
+                                )}
+                              </div>
+                              <ImageUpload value={image.url || ''} onChange={(url) => updateGalleryImage(image.id, 'url', url)} />
+                              <div className="grid grid-cols-3 gap-2">
+                                <Input 
+                                  value={image.alt_fr || ''} 
+                                  onChange={(e) => updateGalleryImage(image.id, 'alt_fr', e.target.value)} 
+                                  className="bg-transparent border-white/20 text-white text-xs" 
+                                  placeholder="Alt (FR)" 
+                                />
+                                <Input 
+                                  value={image.alt_en || ''} 
+                                  onChange={(e) => updateGalleryImage(image.id, 'alt_en', e.target.value)} 
+                                  className="bg-transparent border-white/20 text-white text-xs" 
+                                  placeholder="Alt (EN)" 
+                                />
+                                <Input 
+                                  value={image.alt_pt || ''} 
+                                  onChange={(e) => updateGalleryImage(image.id, 'alt_pt', e.target.value)} 
+                                  className="bg-transparent border-white/20 text-white text-xs" 
+                                  placeholder="Alt (PT)" 
+                                />
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <Button variant="outline" size="sm" onClick={() => deleteGalleryImage(image.id, image.isNew)} className="border-red-500 text-red-500 hover:bg-red-500/10">
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                                <Button size="sm" onClick={() => saveGalleryImage(image)} disabled={saving} className="bg-[#d4af37] text-black hover:bg-white">
+                                  <Save className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {galleryImages.filter(img => img.category === category).length === 0 && (
+                          <p className="text-white/30 text-center py-8">Aucune image dans cette catégorie</p>
+                        )}
+                      </TabsContent>
+                    ))}
+                  </Tabs>
                 </motion.div>
               )}
 

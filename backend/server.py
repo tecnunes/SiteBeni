@@ -182,6 +182,26 @@ class SiteContent(BaseModel):
     reservation_bg_image: str = "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1920&q=80"
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
+# Gallery Image Model
+class GalleryImage(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    url: str
+    category: str  # "ambiance", "dishes", "team"
+    alt_fr: str = ""
+    alt_en: str = ""
+    alt_pt: str = ""
+    sort_order: int = 0
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class GalleryImageCreate(BaseModel):
+    url: str
+    category: str
+    alt_fr: str = ""
+    alt_en: str = ""
+    alt_pt: str = ""
+    sort_order: int = 0
+
 class ReservationCreate(BaseModel):
     name: str
     email: EmailStr
@@ -441,6 +461,45 @@ async def delete_menu_item(item_id: str, admin: dict = Depends(get_current_admin
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Menu item not found")
     return {"message": "Menu item deleted"}
+
+# --- GALLERY ROUTES ---
+
+@api_router.get("/gallery", response_model=List[GalleryImage])
+async def get_gallery_images():
+    images = await db.gallery.find({}, {"_id": 0}).sort("sort_order", 1).to_list(100)
+    return images
+
+@api_router.get("/gallery/{category}", response_model=List[GalleryImage])
+async def get_gallery_by_category(category: str):
+    images = await db.gallery.find({"category": category}, {"_id": 0}).sort("sort_order", 1).to_list(50)
+    return images
+
+@api_router.post("/gallery", response_model=GalleryImage)
+async def create_gallery_image(data: GalleryImageCreate, admin: dict = Depends(get_current_admin)):
+    image = GalleryImage(**data.model_dump())
+    await db.gallery.insert_one(image.model_dump())
+    return image
+
+@api_router.put("/gallery/{image_id}", response_model=GalleryImage)
+async def update_gallery_image(image_id: str, data: GalleryImageCreate, admin: dict = Depends(get_current_admin)):
+    update_data = data.model_dump()
+    
+    result = await db.gallery.update_one(
+        {"id": image_id},
+        {"$set": update_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Gallery image not found")
+    
+    image = await db.gallery.find_one({"id": image_id}, {"_id": 0})
+    return image
+
+@api_router.delete("/gallery/{image_id}")
+async def delete_gallery_image(image_id: str, admin: dict = Depends(get_current_admin)):
+    result = await db.gallery.delete_one({"id": image_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Gallery image not found")
+    return {"message": "Gallery image deleted"}
 
 # --- RESERVATIONS ROUTES ---
 
