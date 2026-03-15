@@ -18,7 +18,9 @@ const Menu = () => {
     fr: {
       title: 'Notre Carte',
       subtitle: 'Menu Complet',
-      weekly_title: 'Menu de la Semaine',
+      weekly_title: 'Menu',
+      weekly_title_midi: 'midi',
+      weekly_title_end: 'de la Semaine',
       weekly_subtitle: 'Nos créations de la semaine',
       reserve_cta: 'Réserver une Table',
       price_note: 'Les prix sont en euros, service compris.',
@@ -45,7 +47,9 @@ const Menu = () => {
     en: {
       title: 'Our Menu',
       subtitle: 'Full Menu',
-      weekly_title: 'Weekly Menu',
+      weekly_title: 'Menu',
+      weekly_title_midi: 'midi',
+      weekly_title_end: 'of the Week',
       weekly_subtitle: 'Our creations of the week',
       reserve_cta: 'Book a Table',
       price_note: 'Prices are in euros, service included.',
@@ -72,7 +76,9 @@ const Menu = () => {
     pt: {
       title: 'Nosso Cardápio',
       subtitle: 'Menu Completo',
-      weekly_title: 'Menu da Semana',
+      weekly_title: 'Menu',
+      weekly_title_midi: 'midi',
+      weekly_title_end: 'da Semana',
       weekly_subtitle: 'Nossas criações da semana',
       reserve_cta: 'Reservar uma Mesa',
       price_note: 'Preços em euros, serviço incluído.',
@@ -186,7 +192,7 @@ const Menu = () => {
                 {c.weekly_subtitle}
               </p>
               <h2 className="font-display text-4xl md:text-5xl text-white mb-4">
-                {c.weekly_title}
+                {c.weekly_title} <span className="font-accent italic text-[#d4af37]">{c.weekly_title_midi}</span> {c.weekly_title_end}
               </h2>
               <div className="flex items-center justify-center gap-2 text-white/60">
                 <Calendar className="w-4 h-4" />
