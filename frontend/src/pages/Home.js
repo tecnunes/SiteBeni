@@ -1,27 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, ChevronDown } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import axios from 'axios';
-
-const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const Home = () => {
-  const { t, getLocalizedField } = useLanguage();
-  const [weeklyMenu, setWeeklyMenu] = useState(null);
-
-  useEffect(() => {
-    const fetchWeeklyMenu = async () => {
-      try {
-        const response = await axios.get(`${API}/weekly-menu`);
-        setWeeklyMenu(response.data);
-      } catch (error) {
-        console.log('No active weekly menu');
-      }
-    };
-    fetchWeeklyMenu();
-  }, []);
+  const { t } = useLanguage();
 
   const scrollToContent = () => {
     window.scrollTo({ top: window.innerHeight, behavior: 'smooth' });
@@ -69,7 +53,7 @@ const Home = () => {
             className="flex flex-col sm:flex-row items-center justify-center gap-4"
           >
             <Link
-              to="/weekly-menu"
+              to="/menu"
               className="bg-[#d4af37] text-black px-10 py-4 text-xs uppercase tracking-[0.2em] font-semibold hover:bg-white transition-all duration-300"
               data-testid="hero-discover-btn"
             >
@@ -130,7 +114,7 @@ const Home = () => {
               </blockquote>
 
               <Link
-                to="/weekly-menu"
+                to="/about"
                 className="inline-flex items-center gap-3 text-[#d4af37] text-sm uppercase tracking-[0.15em] hover:gap-5 transition-all duration-300"
                 data-testid="about-cta"
               >
@@ -170,103 +154,6 @@ const Home = () => {
                 />
               </div>
             </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* Weekly Menu Preview */}
-      <section className="py-24 md:py-32 px-6 md:px-12 bg-[#121212]" data-testid="weekly-preview-section">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-            className="text-center mb-16"
-          >
-            <p className="text-xs uppercase tracking-[0.3em] text-[#d4af37] mb-4">
-              {t('weekly_menu_subtitle')}
-            </p>
-            <h2 className="font-display text-4xl md:text-5xl text-white" data-testid="weekly-preview-title">
-              {t('weekly_menu_title')}
-            </h2>
-          </motion.div>
-
-          {weeklyMenu ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12"
-            >
-              {/* Main Dishes */}
-              {weeklyMenu.dishes?.filter(d => ['meat', 'vegetarian', 'seafood'].includes(d.category)).slice(0, 3).map((dish, index) => (
-                <div
-                  key={dish.id}
-                  className="bg-white/5 border border-white/10 p-8 hover:border-[#d4af37]/50 transition-all duration-300"
-                  data-testid={`weekly-dish-preview-${index}`}
-                >
-                  {dish.image_url && (
-                    <img
-                      src={dish.image_url}
-                      alt={getLocalizedField(dish, 'name')}
-                      className="w-full h-48 object-cover mb-6"
-                    />
-                  )}
-                  <p className="text-xs uppercase tracking-[0.2em] text-[#d4af37] mb-2">
-                    {t(`weekly_menu_${dish.category}`)}
-                  </p>
-                  <h3 className="font-display text-xl text-white mb-3">
-                    {getLocalizedField(dish, 'name')}
-                  </h3>
-                  <p className="text-white/50 text-sm">
-                    {getLocalizedField(dish, 'description')}
-                  </p>
-                </div>
-              ))}
-            </motion.div>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-white/50">{t('loading')}</p>
-            </div>
-          )}
-
-          {/* Pricing Preview */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="flex flex-wrap justify-center gap-8 mb-12"
-          >
-            <div className="text-center" data-testid="price-full">
-              <p className="text-[#d4af37] font-display text-3xl mb-1">28,90€</p>
-              <p className="text-white/50 text-xs uppercase tracking-widest">{t('weekly_menu_full')}</p>
-            </div>
-            <div className="text-center" data-testid="price-entree-plat">
-              <p className="text-white/80 font-display text-2xl mb-1">24,90€</p>
-              <p className="text-white/50 text-xs uppercase tracking-widest">{t('weekly_menu_entree_plat')}</p>
-            </div>
-            <div className="text-center" data-testid="price-plat-dessert">
-              <p className="text-white/80 font-display text-2xl mb-1">23,90€</p>
-              <p className="text-white/50 text-xs uppercase tracking-widest">{t('weekly_menu_plat_dessert')}</p>
-            </div>
-            <div className="text-center" data-testid="price-plat-only">
-              <p className="text-white/80 font-display text-2xl mb-1">17,90€</p>
-              <p className="text-white/50 text-xs uppercase tracking-widest">{t('weekly_menu_plat_only')}</p>
-            </div>
-          </motion.div>
-
-          <div className="text-center">
-            <Link
-              to="/weekly-menu"
-              className="inline-flex items-center gap-3 bg-[#d4af37] text-black px-10 py-4 text-xs uppercase tracking-[0.2em] font-semibold hover:bg-white transition-all duration-300"
-              data-testid="weekly-preview-cta"
-            >
-              {t('hero_discover')}
-              <ArrowRight className="w-4 h-4" />
-            </Link>
           </div>
         </div>
       </section>

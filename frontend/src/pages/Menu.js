@@ -1,22 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Calendar, UtensilsCrossed, Leaf, Fish } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const Menu = () => {
-  const { language, getLocalizedField } = useLanguage();
+  const { language, getLocalizedField, t } = useLanguage();
   const [menuItems, setMenuItems] = useState([]);
+  const [weeklyMenu, setWeeklyMenu] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const content = {
     fr: {
       title: 'Notre Carte',
       subtitle: 'Menu Complet',
-      weekly_cta: 'Voir le Menu de la Semaine',
+      weekly_title: 'Menu de la Semaine',
+      weekly_subtitle: 'Nos créations de la semaine',
       reserve_cta: 'Réserver une Table',
       price_note: 'Les prix sont en euros, service compris.',
       categories: {
@@ -25,12 +27,24 @@ const Menu = () => {
         seafood: 'Poissons & Fruits de Mer',
         desserts: 'Desserts',
         drinks: 'Boissons'
-      }
+      },
+      dishCategories: {
+        meat: 'Viande',
+        vegetarian: 'Végétarien',
+        seafood: 'Poisson / Fruits de Mer',
+        dessert: 'Dessert'
+      },
+      formulas: 'Nos Formules',
+      formula_full: 'Entrée + Plat + Dessert',
+      formula_entree_plat: 'Entrée + Plat',
+      formula_plat_dessert: 'Plat + Dessert',
+      formula_plat_only: 'Plat Seul'
     },
     en: {
       title: 'Our Menu',
       subtitle: 'Full Menu',
-      weekly_cta: 'See Weekly Menu',
+      weekly_title: 'Weekly Menu',
+      weekly_subtitle: 'Our creations of the week',
       reserve_cta: 'Book a Table',
       price_note: 'Prices are in euros, service included.',
       categories: {
@@ -39,12 +53,24 @@ const Menu = () => {
         seafood: 'Fish & Seafood',
         desserts: 'Desserts',
         drinks: 'Drinks'
-      }
+      },
+      dishCategories: {
+        meat: 'Meat',
+        vegetarian: 'Vegetarian',
+        seafood: 'Fish / Seafood',
+        dessert: 'Dessert'
+      },
+      formulas: 'Our Formulas',
+      formula_full: 'Starter + Main + Dessert',
+      formula_entree_plat: 'Starter + Main',
+      formula_plat_dessert: 'Main + Dessert',
+      formula_plat_only: 'Main Only'
     },
     pt: {
       title: 'Nosso Cardápio',
       subtitle: 'Menu Completo',
-      weekly_cta: 'Ver Menu da Semana',
+      weekly_title: 'Menu da Semana',
+      weekly_subtitle: 'Nossas criações da semana',
       reserve_cta: 'Reservar uma Mesa',
       price_note: 'Preços em euros, serviço incluído.',
       categories: {
@@ -53,65 +79,60 @@ const Menu = () => {
         seafood: 'Peixes & Frutos do Mar',
         desserts: 'Sobremesas',
         drinks: 'Bebidas'
-      }
+      },
+      dishCategories: {
+        meat: 'Carne',
+        vegetarian: 'Vegetariano',
+        seafood: 'Peixe / Frutos do Mar',
+        dessert: 'Sobremesa'
+      },
+      formulas: 'Nossas Fórmulas',
+      formula_full: 'Entrada + Prato + Sobremesa',
+      formula_entree_plat: 'Entrada + Prato',
+      formula_plat_dessert: 'Prato + Sobremesa',
+      formula_plat_only: 'Prato Apenas'
     }
   };
 
   const c = content[language];
 
-  // Default menu items (fallback)
-  const defaultMenuItems = {
-    starters: [
-      { name_fr: 'Carpaccio de Bœuf', name_en: 'Beef Carpaccio', name_pt: 'Carpaccio de Carne', price: 16.00, description_fr: 'Roquette, parmesan, câpres', description_en: 'Arugula, parmesan, capers', description_pt: 'Rúcula, parmesão, alcaparras' },
-      { name_fr: 'Tartare de Saumon', name_en: 'Salmon Tartare', name_pt: 'Tartare de Salmão', price: 18.00, description_fr: 'Avocat, sésame, wasabi', description_en: 'Avocado, sesame, wasabi', description_pt: 'Abacate, gergelim, wasabi' },
-      { name_fr: 'Soupe du Jour', name_en: 'Soup of the Day', name_pt: 'Sopa do Dia', price: 9.00, description_fr: 'Préparation maison', description_en: 'Homemade preparation', description_pt: 'Preparo caseiro' },
-      { name_fr: 'Burrata Crémeuse', name_en: 'Creamy Burrata', name_pt: 'Burrata Cremosa', price: 15.00, description_fr: 'Tomates cerises, basilic, pesto', description_en: 'Cherry tomatoes, basil, pesto', description_pt: 'Tomates cereja, manjericão, pesto' },
-    ],
-    mains: [
-      { name_fr: 'Filet de Bœuf', name_en: 'Beef Fillet', name_pt: 'Filé Mignon', price: 32.00, description_fr: 'Sauce au poivre, légumes de saison', description_en: 'Pepper sauce, seasonal vegetables', description_pt: 'Molho de pimenta, legumes da estação' },
-      { name_fr: 'Magret de Canard', name_en: 'Duck Breast', name_pt: 'Magret de Pato', price: 28.00, description_fr: 'Sauce aux fruits rouges, purée', description_en: 'Red fruit sauce, mash', description_pt: 'Molho de frutas vermelhas, purê' },
-      { name_fr: 'Risotto aux Champignons', name_en: 'Mushroom Risotto', name_pt: 'Risoto de Cogumelos', price: 22.00, description_fr: 'Champignons forestiers, parmesan', description_en: 'Forest mushrooms, parmesan', description_pt: 'Cogumelos da floresta, parmesão' },
-    ],
-    seafood: [
-      { name_fr: 'Filet de Bar', name_en: 'Sea Bass Fillet', name_pt: 'Filé de Robalo', price: 28.00, description_fr: 'Beurre blanc, légumes grillés', description_en: 'White butter, grilled vegetables', description_pt: 'Manteiga branca, legumes grelhados' },
-      { name_fr: 'Gambas à l\'Ail', name_en: 'Garlic Prawns', name_pt: 'Camarões ao Alho', price: 24.00, description_fr: 'Ail, persil, huile d\'olive', description_en: 'Garlic, parsley, olive oil', description_pt: 'Alho, salsa, azeite' },
-    ],
-    desserts: [
-      { name_fr: 'Tiramisu Maison', name_en: 'Homemade Tiramisu', name_pt: 'Tiramisu Caseiro', price: 10.00, description_fr: 'Recette traditionnelle', description_en: 'Traditional recipe', description_pt: 'Receita tradicional' },
-      { name_fr: 'Fondant au Chocolat', name_en: 'Chocolate Fondant', name_pt: 'Fondant de Chocolate', price: 11.00, description_fr: 'Cœur coulant, glace vanille', description_en: 'Molten center, vanilla ice cream', description_pt: 'Centro derretido, sorvete de baunilha' },
-    ],
-    drinks: [
-      { name_fr: 'Vin Rouge (verre)', name_en: 'Red Wine (glass)', name_pt: 'Vinho Tinto (copo)', price: 7.00, description_fr: 'Sélection du sommelier', description_en: 'Sommelier selection', description_pt: 'Seleção do sommelier' },
-      { name_fr: 'Champagne (coupe)', name_en: 'Champagne (glass)', name_pt: 'Champagne (taça)', price: 12.00, description_fr: 'Brut, Reims', description_en: 'Brut, Reims', description_pt: 'Brut, Reims' },
-    ]
-  };
-
   useEffect(() => {
-    const fetchMenuItems = async () => {
+    const fetchData = async () => {
       try {
-        const response = await axios.get(`${API}/menu-items`);
-        if (response.data && response.data.length > 0) {
-          setMenuItems(response.data);
-        }
+        const [menuItemsRes, weeklyMenuRes] = await Promise.all([
+          axios.get(`${API}/menu-items`),
+          axios.get(`${API}/weekly-menu`)
+        ]);
+        setMenuItems(menuItemsRes.data || []);
+        setWeeklyMenu(weeklyMenuRes.data);
       } catch (error) {
-        console.log('Using default menu items');
+        console.log('Error fetching data');
       } finally {
         setLoading(false);
       }
     };
-    fetchMenuItems();
+    fetchData();
   }, []);
+
+  const getCategoryIcon = (category) => {
+    switch (category) {
+      case 'meat': return <UtensilsCrossed className="w-5 h-5" />;
+      case 'vegetarian': return <Leaf className="w-5 h-5" />;
+      case 'seafood': return <Fish className="w-5 h-5" />;
+      default: return null;
+    }
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString(language === 'fr' ? 'fr-FR' : language === 'pt' ? 'pt-BR' : 'en-US', { day: 'numeric', month: 'long' });
+  };
 
   const categoryOrder = ['starters', 'mains', 'seafood', 'desserts', 'drinks'];
 
-  // Get items for a category - from DB or default
-  const getItemsForCategory = (category) => {
-    const dbItems = menuItems.filter(item => item.category === category && item.is_available !== false);
-    if (dbItems.length > 0) {
-      return dbItems;
-    }
-    return defaultMenuItems[category] || [];
-  };
+  const mainDishes = weeklyMenu?.dishes?.filter(d => ['meat', 'vegetarian', 'seafood'].includes(d.category)) || [];
+  const desserts = weeklyMenu?.dishes?.filter(d => d.category === 'dessert') || [];
 
   return (
     <main className="min-h-screen bg-[#0a0a0a] pt-20" data-testid="menu-page">
@@ -135,29 +156,173 @@ const Menu = () => {
             <p className="text-xs uppercase tracking-[0.3em] text-[#d4af37] mb-4">
               {c.subtitle}
             </p>
-            <h1 className="font-display text-5xl md:text-7xl text-white mb-8" data-testid="menu-title">
+            <h1 className="font-display text-5xl md:text-7xl text-white" data-testid="menu-title">
               {c.title}
             </h1>
-            <Link
-              to="/weekly-menu"
-              className="inline-flex items-center gap-3 border border-[#d4af37] text-[#d4af37] px-8 py-3 text-xs uppercase tracking-[0.2em] hover:bg-[#d4af37] hover:text-black transition-all duration-300"
-              data-testid="weekly-menu-link"
-            >
-              {c.weekly_cta}
-              <ArrowRight className="w-4 h-4" />
-            </Link>
           </motion.div>
         </div>
       </section>
 
-      {/* Menu Sections */}
+      {/* Weekly Menu Section */}
+      {weeklyMenu && (mainDishes.length > 0 || desserts.length > 0) && (
+        <section className="py-16 px-6 md:px-12 bg-[#121212]" data-testid="weekly-menu-section">
+          <div className="max-w-6xl mx-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8 }}
+              className="text-center mb-12"
+            >
+              <p className="text-xs uppercase tracking-[0.3em] text-[#d4af37] mb-4">
+                {c.weekly_subtitle}
+              </p>
+              <h2 className="font-display text-4xl md:text-5xl text-white mb-4">
+                {c.weekly_title}
+              </h2>
+              <div className="flex items-center justify-center gap-2 text-white/60">
+                <Calendar className="w-4 h-4" />
+                <span className="text-sm">
+                  {formatDate(weeklyMenu.week_start)} - {formatDate(weeklyMenu.week_end)}
+                </span>
+              </div>
+            </motion.div>
+
+            {/* Main Dishes */}
+            {mainDishes.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+                {mainDishes.map((dish, index) => (
+                  <motion.div
+                    key={dish.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6, delay: 0.1 * index }}
+                    className="group"
+                    data-testid={`weekly-dish-${dish.category}`}
+                  >
+                    <div className="bg-[#0a0a0a] border border-white/10 overflow-hidden hover:border-[#d4af37]/50 transition-all duration-500">
+                      {dish.image_url ? (
+                        <div className="relative h-56 overflow-hidden">
+                          <img
+                            src={dish.image_url}
+                            alt={getLocalizedField(dish, 'name')}
+                            className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] to-transparent" />
+                        </div>
+                      ) : (
+                        <div className="h-56 bg-[#1a1a1a] flex items-center justify-center">
+                          {getCategoryIcon(dish.category)}
+                        </div>
+                      )}
+                      
+                      <div className="p-6">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="text-[#d4af37]">{getCategoryIcon(dish.category)}</span>
+                          <p className="text-xs uppercase tracking-[0.2em] text-[#d4af37]">
+                            {c.dishCategories[dish.category]}
+                          </p>
+                        </div>
+                        <h3 className="font-display text-xl text-white mb-2">
+                          {getLocalizedField(dish, 'name')}
+                        </h3>
+                        {getLocalizedField(dish, 'description') && (
+                          <p className="text-white/50 text-sm">
+                            {getLocalizedField(dish, 'description')}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+
+            {/* Desserts */}
+            {desserts.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12 max-w-3xl mx-auto">
+                {desserts.map((dish, index) => (
+                  <motion.div
+                    key={dish.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6, delay: 0.1 * index }}
+                    className="bg-[#0a0a0a] border border-white/10 p-6 hover:border-[#d4af37]/50 transition-all"
+                    data-testid={`weekly-dessert-${index}`}
+                  >
+                    <p className="text-xs uppercase tracking-[0.2em] text-[#d4af37] mb-2">
+                      {c.dishCategories.dessert}
+                    </p>
+                    <h3 className="font-display text-lg text-white mb-1">
+                      {getLocalizedField(dish, 'name')}
+                    </h3>
+                    {getLocalizedField(dish, 'description') && (
+                      <p className="text-white/50 text-sm">
+                        {getLocalizedField(dish, 'description')}
+                      </p>
+                    )}
+                  </motion.div>
+                ))}
+              </div>
+            )}
+
+            {/* Pricing */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8 }}
+              className="bg-[#0a0a0a] border border-[#d4af37]/30 p-8"
+            >
+              <h3 className="text-center text-white font-display text-2xl mb-8">{c.formulas}</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div className="text-center p-4 bg-[#d4af37]/10 border border-[#d4af37]">
+                  <p className="text-[#d4af37] font-display text-3xl mb-1">
+                    {weeklyMenu.price_full?.toFixed(2).replace('.', ',')}€
+                  </p>
+                  <p className="text-white/70 text-xs uppercase tracking-wider">{c.formula_full}</p>
+                </div>
+                <div className="text-center p-4 border border-white/10">
+                  <p className="text-white font-display text-2xl mb-1">
+                    {weeklyMenu.price_entree_plat?.toFixed(2).replace('.', ',')}€
+                  </p>
+                  <p className="text-white/50 text-xs uppercase tracking-wider">{c.formula_entree_plat}</p>
+                </div>
+                <div className="text-center p-4 border border-white/10">
+                  <p className="text-white font-display text-2xl mb-1">
+                    {weeklyMenu.price_plat_dessert?.toFixed(2).replace('.', ',')}€
+                  </p>
+                  <p className="text-white/50 text-xs uppercase tracking-wider">{c.formula_plat_dessert}</p>
+                </div>
+                <div className="text-center p-4 border border-white/10">
+                  <p className="text-white font-display text-2xl mb-1">
+                    {weeklyMenu.price_plat_only?.toFixed(2).replace('.', ',')}€
+                  </p>
+                  <p className="text-white/50 text-xs uppercase tracking-wider">{c.formula_plat_only}</p>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </section>
+      )}
+
+      {/* Divider */}
+      <div className="py-8 px-6 md:px-12">
+        <div className="max-w-4xl mx-auto">
+          <div className="h-px bg-gradient-to-r from-transparent via-[#d4af37]/50 to-transparent" />
+        </div>
+      </div>
+
+      {/* Full Menu Sections */}
       {loading ? (
         <div className="py-24 text-center">
           <p className="text-white/50">Chargement...</p>
         </div>
       ) : (
         categoryOrder.map((category, categoryIndex) => {
-          const items = getItemsForCategory(category);
+          const items = menuItems.filter(item => item.category === category && item.is_available !== false);
           if (items.length === 0) return null;
 
           return (
@@ -180,7 +345,7 @@ const Menu = () => {
                   <div className="space-y-8">
                     {items.map((item, index) => (
                       <motion.div
-                        key={item.id || index}
+                        key={item.id}
                         initial={{ opacity: 0, x: -20 }}
                         whileInView={{ opacity: 1, x: 0 }}
                         viewport={{ once: true }}
@@ -216,6 +381,17 @@ const Menu = () => {
             </section>
           );
         })
+      )}
+
+      {/* Show message if no menu items */}
+      {!loading && menuItems.length === 0 && (
+        <section className="py-16 px-6 md:px-12 text-center">
+          <p className="text-white/50">
+            {language === 'fr' ? 'Le menu sera bientôt disponible.' : 
+             language === 'en' ? 'Menu coming soon.' : 
+             'Menu em breve disponível.'}
+          </p>
+        </section>
       )}
 
       {/* Bottom CTA */}
