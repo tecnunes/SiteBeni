@@ -13,6 +13,7 @@ import { Textarea } from '../../components/ui/textarea';
 import { Label } from '../../components/ui/label';
 import { Calendar as CalendarComponent } from '../../components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
+import ImageUpload from '../../components/ImageUpload';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -458,22 +459,11 @@ const AdminDashboard = () => {
                             </div>
 
                             <div className="space-y-2">
-                              <Label className="text-xs text-white/70">URL de l'image</Label>
-                              <div className="flex gap-2">
-                                <Input
-                                  value={dish.image_url}
-                                  onChange={(e) => updateDish(dish.id, 'image_url', e.target.value)}
-                                  className="bg-transparent border-white/20 text-white flex-1"
-                                  placeholder="https://..."
-                                />
-                                {dish.image_url && (
-                                  <img 
-                                    src={dish.image_url} 
-                                    alt="Preview" 
-                                    className="w-12 h-12 object-cover"
-                                  />
-                                )}
-                              </div>
+                              <Label className="text-xs text-white/70">Image du plat</Label>
+                              <ImageUpload
+                                value={dish.image_url}
+                                onChange={(url) => updateDish(dish.id, 'image_url', url)}
+                              />
                             </div>
                           </div>
                         ))}

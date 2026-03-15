@@ -1,5 +1,6 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -12,9 +13,14 @@ import uuid
 from datetime import datetime, timezone, timedelta
 import jwt
 import bcrypt
+import shutil
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+
+# Create uploads directory
+UPLOADS_DIR = ROOT_DIR / 'uploads'
+UPLOADS_DIR.mkdir(exist_ok=True)
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -342,6 +348,43 @@ async def delete_reservation(reservation_id: str, admin: dict = Depends(get_curr
         raise HTTPException(status_code=404, detail="Reservation not found")
     return {"message": "Reservation deleted"}
 
+# --- IMAGE UPLOAD ROUTES ---
+
+ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+
+@api_router.post("/upload")
+async def upload_image(file: UploadFile = File(...), admin: dict = Depends(get_current_admin)):
+    # Validate file extension
+    file_ext = Path(file.filename).suffix.lower()
+    if file_ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail=f"File type not allowed. Allowed: {', '.join(ALLOWED_EXTENSIONS)}")
+    
+    # Generate unique filename
+    unique_filename = f"{uuid.uuid4()}{file_ext}"
+    file_path = UPLOADS_DIR / unique_filename
+    
+    # Save file
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error saving file: {str(e)}")
+    
+    # Return the URL
+    return {
+        "filename": unique_filename,
+        "url": f"/api/uploads/{unique_filename}"
+    }
+
+@api_router.delete("/upload/{filename}")
+async def delete_image(filename: str, admin: dict = Depends(get_current_admin)):
+    file_path = UPLOADS_DIR / filename
+    if file_path.exists():
+        file_path.unlink()
+        return {"message": "File deleted"}
+    raise HTTPException(status_code=404, detail="File not found")
+
 # --- ROOT ROUTE ---
 
 @api_router.get("/")
@@ -350,6 +393,9 @@ async def root():
 
 # Include the router in the main app
 app.include_router(api_router)
+
+# Mount uploads directory for serving static files
+app.mount("/api/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
 app.add_middleware(
     CORSMiddleware,
