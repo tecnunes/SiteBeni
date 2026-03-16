@@ -10,6 +10,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const Menu = () => {
   const { language, getLocalizedField } = useLanguage();
   const [menuItems, setMenuItems] = useState([]);
+  const [menuCategories, setMenuCategories] = useState([]);
   const [weeklyMenu, setWeeklyMenu] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expandedItem, setExpandedItem] = useState(null);
@@ -109,11 +110,13 @@ const Menu = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [menuItemsRes, weeklyMenuRes] = await Promise.all([
+        const [menuItemsRes, categoriesRes, weeklyMenuRes] = await Promise.all([
           axios.get(`${API}/menu-items`),
+          axios.get(`${API}/menu-categories`),
           axios.get(`${API}/weekly-menu`)
         ]);
         setMenuItems(menuItemsRes.data || []);
+        setMenuCategories(categoriesRes.data || []);
         setWeeklyMenu(weeklyMenuRes.data);
       } catch (error) {
         console.log('Error fetching data');
@@ -143,7 +146,14 @@ const Menu = () => {
     setExpandedItem(expandedItem === itemId ? null : itemId);
   };
 
-  const categoryOrder = ['starters', 'mains', 'seafood', 'desserts', 'drinks'];
+  // Use dynamic categories from database
+  const getCategoryName = (category) => {
+    const cat = menuCategories.find(c => c.slug === category.slug);
+    if (cat) {
+      return language === 'fr' ? cat.name_fr : language === 'en' ? cat.name_en : cat.name_pt;
+    }
+    return c.categories[category.slug] || category.slug;
+  };
 
   const mainDishes = weeklyMenu?.dishes?.filter(d => ['meat', 'vegetarian', 'seafood'].includes(d.category)) || [];
   const desserts = weeklyMenu?.dishes?.filter(d => d.category === 'dessert') || [];
@@ -386,15 +396,17 @@ const Menu = () => {
           <p className="text-white/50">Chargement...</p>
         </div>
       ) : (
-        categoryOrder.map((category, categoryIndex) => {
-          const items = menuItems.filter(item => item.category === category && item.is_available !== false);
+        menuCategories.map((category, categoryIndex) => {
+          const items = menuItems.filter(item => item.category === category.slug && item.is_available !== false);
           if (items.length === 0) return null;
+
+          const categoryName = language === 'fr' ? category.name_fr : language === 'en' ? category.name_en : category.name_pt;
 
           return (
             <section 
-              key={category}
+              key={category.id}
               className={`py-16 px-6 md:px-12 ${categoryIndex % 2 === 1 ? 'bg-[#121212]' : ''}`}
-              data-testid={`menu-section-${category}`}
+              data-testid={`menu-section-${category.slug}`}
             >
               <div className="max-w-4xl mx-auto">
                 <motion.div
@@ -404,7 +416,7 @@ const Menu = () => {
                   transition={{ duration: 0.6 }}
                 >
                   <h2 className="font-display text-3xl text-[#d4af37] text-center mb-12">
-                    {c.categories[category]}
+                    {categoryName}
                   </h2>
 
                   <div className="space-y-4">
@@ -420,7 +432,7 @@ const Menu = () => {
                           viewport={{ once: true }}
                           transition={{ duration: 0.5, delay: index * 0.05 }}
                           className="group"
-                          data-testid={`menu-item-${category}-${index}`}
+                          data-testid={`menu-item-${category.slug}-${index}`}
                         >
                           {/* Item Row */}
                           <div 

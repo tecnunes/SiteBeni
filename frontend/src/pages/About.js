@@ -160,7 +160,7 @@ const About = () => {
               <img
                 src={historyImage}
                 alt="BÉNI Interior"
-                className="w-full h-[400px] object-cover"
+                className="w-full h-auto max-h-[500px] object-contain"
                 data-testid="history-image"
               />
               <div className="absolute -bottom-6 -left-6 w-32 h-32 border-2 border-[#d4af37]" />
@@ -183,7 +183,7 @@ const About = () => {
               <img
                 src={chefImage}
                 alt="Chef Stephano Crupi"
-                className="w-full h-[500px] object-cover"
+                className="w-full h-auto max-h-[600px] object-contain"
                 data-testid="chef-image"
               />
             </motion.div>

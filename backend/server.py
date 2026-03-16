@@ -154,6 +154,26 @@ class MenuItemCreate(BaseModel):
     is_available: bool = True
     sort_order: int = 0
 
+# Menu Category Model (for dynamic categories)
+class MenuCategory(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    slug: str  # unique identifier like "starters", "mains"
+    name_fr: str
+    name_en: str
+    name_pt: str
+    sort_order: int = 0
+    is_active: bool = True
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class MenuCategoryCreate(BaseModel):
+    slug: str
+    name_fr: str
+    name_en: str
+    name_pt: str
+    sort_order: int = 0
+    is_active: bool = True
+
 # Site Content Model (for texts)
 class SiteContent(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -180,6 +200,12 @@ class SiteContent(BaseModel):
     about_image_3: str = "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=600&q=80"
     chef_image: str = "https://images.unsplash.com/photo-1600565193348-f74bd3c7ccdf?w=800&q=80"
     reservation_bg_image: str = "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1920&q=80"
+    # Page Background Images (optional - if not set, pages use default style)
+    bg_home: str = ""
+    bg_about: str = ""
+    bg_menu: str = ""
+    bg_gallery: str = ""
+    bg_reservations: str = ""
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 # Gallery Image Model
@@ -423,6 +449,62 @@ async def update_site_content(data: SiteContent, admin: dict = Depends(get_curre
     )
     return data
 
+# --- MENU CATEGORIES ROUTES ---
+
+@api_router.get("/menu-categories", response_model=List[MenuCategory])
+async def get_menu_categories():
+    categories = await db.menu_categories.find({}, {"_id": 0}).sort("sort_order", 1).to_list(50)
+    return categories
+
+@api_router.post("/menu-categories", response_model=MenuCategory)
+async def create_menu_category(data: MenuCategoryCreate, admin: dict = Depends(get_current_admin)):
+    # Check if slug already exists
+    existing = await db.menu_categories.find_one({"slug": data.slug}, {"_id": 0})
+    if existing:
+        raise HTTPException(status_code=400, detail="Category slug already exists")
+    
+    category = MenuCategory(**data.model_dump())
+    await db.menu_categories.insert_one(category.model_dump())
+    return category
+
+@api_router.put("/menu-categories/{category_id}", response_model=MenuCategory)
+async def update_menu_category(category_id: str, data: MenuCategoryCreate, admin: dict = Depends(get_current_admin)):
+    update_data = data.model_dump()
+    
+    result = await db.menu_categories.update_one(
+        {"id": category_id},
+        {"$set": update_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Category not found")
+    
+    category = await db.menu_categories.find_one({"id": category_id}, {"_id": 0})
+    return category
+
+@api_router.put("/menu-categories/reorder", response_model=List[MenuCategory])
+async def reorder_menu_categories(category_orders: List[dict], admin: dict = Depends(get_current_admin)):
+    for item in category_orders:
+        await db.menu_categories.update_one(
+            {"id": item["id"]},
+            {"$set": {"sort_order": item["sort_order"]}}
+        )
+    categories = await db.menu_categories.find({}, {"_id": 0}).sort("sort_order", 1).to_list(50)
+    return categories
+
+@api_router.delete("/menu-categories/{category_id}")
+async def delete_menu_category(category_id: str, admin: dict = Depends(get_current_admin)):
+    # Check if there are items in this category
+    category = await db.menu_categories.find_one({"id": category_id}, {"_id": 0})
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    
+    items_count = await db.menu_items.count_documents({"category": category["slug"]})
+    if items_count > 0:
+        raise HTTPException(status_code=400, detail=f"Cannot delete category with {items_count} items. Move or delete items first.")
+    
+    result = await db.menu_categories.delete_one({"id": category_id})
+    return {"message": "Category deleted"}
+
 # --- MENU ITEMS ROUTES (Cardápio Completo) ---
 
 @api_router.get("/menu-items", response_model=List[MenuItem])
@@ -652,6 +734,21 @@ async def startup_event():
             image = GalleryImage(**img_data)
             await db.gallery.insert_one(image.model_dump())
         print(f"Created {len(default_images)} default gallery images")
+    
+    # Create default menu categories if empty
+    categories_count = await db.menu_categories.count_documents({})
+    if categories_count == 0:
+        default_categories = [
+            {"slug": "starters", "name_fr": "Entrées", "name_en": "Starters", "name_pt": "Entradas", "sort_order": 0},
+            {"slug": "mains", "name_fr": "Plats Principaux", "name_en": "Main Courses", "name_pt": "Pratos Principais", "sort_order": 1},
+            {"slug": "seafood", "name_fr": "Poissons & Fruits de Mer", "name_en": "Fish & Seafood", "name_pt": "Peixes & Frutos do Mar", "sort_order": 2},
+            {"slug": "desserts", "name_fr": "Desserts", "name_en": "Desserts", "name_pt": "Sobremesas", "sort_order": 3},
+            {"slug": "drinks", "name_fr": "Boissons", "name_en": "Drinks", "name_pt": "Bebidas", "sort_order": 4},
+        ]
+        for cat_data in default_categories:
+            category = MenuCategory(**cat_data)
+            await db.menu_categories.insert_one(category.model_dump())
+        print(f"Created {len(default_categories)} default menu categories")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

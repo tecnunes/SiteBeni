@@ -34,9 +34,18 @@ const Home = () => {
   const aboutImage2 = siteContent?.about_image_2 || 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&q=80';
   const aboutImage3 = siteContent?.about_image_3 || 'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=600&q=80';
   const reservationBgImage = siteContent?.reservation_bg_image || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1920&q=80';
+  const bgHome = siteContent?.bg_home || '';
 
   return (
-    <main className="min-h-screen bg-[#0a0a0a]" data-testid="home-page">
+    <main className="min-h-screen bg-[#0a0a0a] relative" data-testid="home-page">
+      {/* Optional Page Background */}
+      {bgHome && (
+        <div className="fixed inset-0 z-0">
+          <img src={bgHome} alt="" className="w-full h-full object-cover opacity-20" />
+          <div className="absolute inset-0 bg-[#0a0a0a]/80" />
+        </div>
+      )}
+      
       {/* Hero Section */}
       <section className="relative h-screen flex items-center justify-center overflow-hidden" data-testid="hero-section">
         {/* Background Image */}
