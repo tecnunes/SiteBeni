@@ -749,6 +749,45 @@ async def startup_event():
             category = MenuCategory(**cat_data)
             await db.menu_categories.insert_one(category.model_dump())
         print(f"Created {len(default_categories)} default menu categories")
+    
+    # Create default menu items if empty
+    menu_items_count = await db.menu_items.count_documents({})
+    if menu_items_count == 0:
+        default_menu_items = [
+            # Entrées
+            {"category": "starters", "name_fr": "Carpaccio de Bœuf", "name_en": "Beef Carpaccio", "name_pt": "Carpaccio de Carne", "description_fr": "Bœuf finement tranché, roquette, parmesan, huile de truffe", "description_en": "Thinly sliced beef, arugula, parmesan, truffle oil", "description_pt": "Carne finamente fatiada, rúcula, parmesão, óleo de trufa", "price": 16.50, "sort_order": 0},
+            {"category": "starters", "name_fr": "Foie Gras Maison", "name_en": "Homemade Foie Gras", "name_pt": "Foie Gras da Casa", "description_fr": "Foie gras mi-cuit, chutney de figues, brioche toastée", "description_en": "Semi-cooked foie gras, fig chutney, toasted brioche", "description_pt": "Foie gras semicozido, chutney de figo, brioche torrada", "price": 22.00, "sort_order": 1},
+            {"category": "starters", "name_fr": "Burrata Crémeuse", "name_en": "Creamy Burrata", "name_pt": "Burrata Cremosa", "description_fr": "Burrata fraîche, tomates cerises, basilic, huile d'olive", "description_en": "Fresh burrata, cherry tomatoes, basil, olive oil", "description_pt": "Burrata fresca, tomate cereja, manjericão, azeite", "price": 14.50, "sort_order": 2},
+            {"category": "starters", "name_fr": "Velouté de Champignons", "name_en": "Mushroom Velouté", "name_pt": "Velouté de Cogumelos", "description_fr": "Champignons des bois, crème fraîche, croûtons dorés", "description_en": "Wild mushrooms, fresh cream, golden croutons", "description_pt": "Cogumelos silvestres, creme fresco, croutons dourados", "price": 12.00, "sort_order": 3},
+            
+            # Plats Principaux
+            {"category": "mains", "name_fr": "Filet de Bœuf Rossini", "name_en": "Beef Filet Rossini", "name_pt": "Filé Mignon Rossini", "description_fr": "Filet de bœuf, foie gras poêlé, sauce aux truffes", "description_en": "Beef filet, pan-seared foie gras, truffle sauce", "description_pt": "Filé mignon, foie gras grelhado, molho de trufas", "price": 38.00, "sort_order": 0},
+            {"category": "mains", "name_fr": "Magret de Canard", "name_en": "Duck Breast", "name_pt": "Magret de Pato", "description_fr": "Magret rôti, sauce aux cerises, purée de patate douce", "description_en": "Roasted duck breast, cherry sauce, sweet potato purée", "description_pt": "Magret assado, molho de cereja, purê de batata doce", "price": 32.00, "sort_order": 1},
+            {"category": "mains", "name_fr": "Risotto aux Cèpes", "name_en": "Porcini Risotto", "name_pt": "Risoto de Cogumelos", "description_fr": "Riz carnaroli, cèpes frais, parmesan, huile de truffe", "description_en": "Carnaroli rice, fresh porcini, parmesan, truffle oil", "description_pt": "Arroz carnaroli, cogumelos frescos, parmesão, óleo de trufa", "price": 26.00, "sort_order": 2},
+            {"category": "mains", "name_fr": "Côte de Veau Grillée", "name_en": "Grilled Veal Chop", "name_pt": "Costela de Vitela Grelhada", "description_fr": "Côte de veau, légumes de saison, jus corsé", "description_en": "Veal chop, seasonal vegetables, rich jus", "description_pt": "Costela de vitela, legumes da estação, molho encorpado", "price": 35.00, "sort_order": 3},
+            
+            # Poissons & Fruits de Mer
+            {"category": "seafood", "name_fr": "Bar en Croûte de Sel", "name_en": "Salt-Crusted Sea Bass", "name_pt": "Robalo em Crosta de Sal", "description_fr": "Bar entier, croûte de sel aux herbes, légumes grillés", "description_en": "Whole sea bass, herb salt crust, grilled vegetables", "description_pt": "Robalo inteiro, crosta de sal com ervas, legumes grelhados", "price": 34.00, "sort_order": 0},
+            {"category": "seafood", "name_fr": "Homard Thermidor", "name_en": "Lobster Thermidor", "name_pt": "Lagosta Thermidor", "description_fr": "Demi-homard, sauce crémeuse gratinée, riz sauvage", "description_en": "Half lobster, creamy gratin sauce, wild rice", "description_pt": "Meia lagosta, molho cremoso gratinado, arroz selvagem", "price": 48.00, "sort_order": 1},
+            {"category": "seafood", "name_fr": "Saint-Jacques Poêlées", "name_en": "Pan-Seared Scallops", "name_pt": "Vieiras Grelhadas", "description_fr": "Noix de Saint-Jacques, purée de céleri, beurre noisette", "description_en": "Scallops, celery purée, brown butter", "description_pt": "Vieiras, purê de aipo, manteiga dourada", "price": 32.00, "sort_order": 2},
+            {"category": "seafood", "name_fr": "Sole Meunière", "name_en": "Sole Meunière", "name_pt": "Linguado Meunière", "description_fr": "Sole entière, beurre citronné, câpres, persil", "description_en": "Whole sole, lemon butter, capers, parsley", "description_pt": "Linguado inteiro, manteiga de limão, alcaparras, salsa", "price": 36.00, "sort_order": 3},
+            
+            # Desserts
+            {"category": "desserts", "name_fr": "Fondant au Chocolat", "name_en": "Chocolate Fondant", "name_pt": "Fondant de Chocolate", "description_fr": "Cœur coulant, glace vanille, crumble", "description_en": "Molten center, vanilla ice cream, crumble", "description_pt": "Centro derretido, sorvete de baunilha, crumble", "price": 12.00, "sort_order": 0},
+            {"category": "desserts", "name_fr": "Crème Brûlée", "name_en": "Crème Brûlée", "name_pt": "Crème Brûlée", "description_fr": "Crème vanille, caramel croustillant", "description_en": "Vanilla cream, crispy caramel", "description_pt": "Creme de baunilha, caramelo crocante", "price": 10.00, "sort_order": 1},
+            {"category": "desserts", "name_fr": "Tarte Tatin", "name_en": "Tarte Tatin", "name_pt": "Tarte Tatin", "description_fr": "Pommes caramélisées, pâte feuilletée, crème fraîche", "description_en": "Caramelized apples, puff pastry, fresh cream", "description_pt": "Maçãs caramelizadas, massa folhada, creme fresco", "price": 11.00, "sort_order": 2},
+            {"category": "desserts", "name_fr": "Assiette de Fromages", "name_en": "Cheese Plate", "name_pt": "Tábua de Queijos", "description_fr": "Sélection de fromages affinés, confiture, noix", "description_en": "Selection of aged cheeses, jam, nuts", "description_pt": "Seleção de queijos maturados, geleia, nozes", "price": 14.00, "sort_order": 3},
+            
+            # Boissons
+            {"category": "drinks", "name_fr": "Eau Minérale", "name_en": "Mineral Water", "name_pt": "Água Mineral", "description_fr": "Plate ou gazeuse, 75cl", "description_en": "Still or sparkling, 75cl", "description_pt": "Com ou sem gás, 75cl", "price": 5.00, "sort_order": 0},
+            {"category": "drinks", "name_fr": "Café Espresso", "name_en": "Espresso Coffee", "name_pt": "Café Espresso", "description_fr": "Café italien premium", "description_en": "Premium Italian coffee", "description_pt": "Café italiano premium", "price": 3.50, "sort_order": 1},
+            {"category": "drinks", "name_fr": "Thé Selection", "name_en": "Tea Selection", "name_pt": "Seleção de Chás", "description_fr": "Thés fins, infusions", "description_en": "Fine teas, infusions", "description_pt": "Chás finos, infusões", "price": 4.50, "sort_order": 2},
+            {"category": "drinks", "name_fr": "Digestif Maison", "name_en": "House Digestif", "name_pt": "Digestivo da Casa", "description_fr": "Sélection de liqueurs et eaux-de-vie", "description_en": "Selection of liqueurs and brandies", "description_pt": "Seleção de licores e aguardentes", "price": 8.00, "sort_order": 3},
+        ]
+        for item_data in default_menu_items:
+            item = MenuItem(**item_data)
+            await db.menu_items.insert_one(item.model_dump())
+        print(f"Created {len(default_menu_items)} default menu items")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
