@@ -250,6 +250,48 @@ class Reservation(BaseModel):
     status: str = "pending"  # pending, confirmed, cancelled
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
+# --- EVENT MODELS (Reserva de Pratos em Grupo) ---
+
+class EventOrderItem(BaseModel):
+    item_id: str
+    name_fr: str
+    name_en: str = ""
+    name_pt: str = ""
+    price: float
+    quantity: int = 1
+    observation: str = ""
+
+class EventOrder(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    event_id: str
+    guest_name: str
+    items: List[EventOrderItem] = []
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class EventOrderCreate(BaseModel):
+    guest_name: str
+    items: List[EventOrderItem]
+
+class Event(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str  # Nome do evento (ex: "Evento Juliana")
+    num_guests: int  # Número de pessoas esperadas
+    organizer_name: str
+    organizer_email: str
+    organizer_whatsapp: str = ""
+    link_code: str = Field(default_factory=lambda: str(uuid.uuid4())[:8])  # Código único para o link
+    status: str = "open"  # open, closed, sent
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class EventCreate(BaseModel):
+    name: str
+    num_guests: int
+    organizer_name: str
+    organizer_email: str
+    organizer_whatsapp: str = ""
+
 # --- HELPER FUNCTIONS ---
 
 def hash_password(password: str) -> str:
@@ -623,6 +665,143 @@ async def delete_reservation(reservation_id: str, admin: dict = Depends(get_curr
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Reservation not found")
     return {"message": "Reservation deleted"}
+
+# --- EVENT ROUTES (Reserva de Pratos em Grupo) ---
+
+@api_router.post("/events", response_model=Event)
+async def create_event(data: EventCreate, admin: dict = Depends(get_current_admin)):
+    event = Event(
+        name=data.name,
+        num_guests=data.num_guests,
+        organizer_name=data.organizer_name,
+        organizer_email=data.organizer_email,
+        organizer_whatsapp=data.organizer_whatsapp
+    )
+    await db.events.insert_one(event.model_dump())
+    return event
+
+@api_router.get("/events", response_model=List[Event])
+async def get_events(admin: dict = Depends(get_current_admin)):
+    events = await db.events.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return events
+
+@api_router.get("/events/{link_code}")
+async def get_event_by_link(link_code: str):
+    event = await db.events.find_one({"link_code": link_code}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    return event
+
+@api_router.get("/events/{link_code}/orders")
+async def get_event_orders(link_code: str):
+    event = await db.events.find_one({"link_code": link_code}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    orders = await db.event_orders.find({"event_id": event["id"]}, {"_id": 0}).to_list(500)
+    return orders
+
+@api_router.post("/events/{link_code}/orders", response_model=EventOrder)
+async def add_event_order(link_code: str, data: EventOrderCreate):
+    event = await db.events.find_one({"link_code": link_code}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    if event.get("status") == "sent":
+        raise HTTPException(status_code=400, detail="Event already sent to restaurant")
+    
+    order = EventOrder(
+        event_id=event["id"],
+        guest_name=data.guest_name,
+        items=[item.model_dump() for item in data.items]
+    )
+    await db.event_orders.insert_one(order.model_dump())
+    return order
+
+@api_router.put("/events/{link_code}/orders/{order_id}")
+async def update_event_order(link_code: str, order_id: str, data: EventOrderCreate):
+    event = await db.events.find_one({"link_code": link_code}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    if event.get("status") == "sent":
+        raise HTTPException(status_code=400, detail="Event already sent to restaurant")
+    
+    result = await db.event_orders.update_one(
+        {"id": order_id, "event_id": event["id"]},
+        {"$set": {"guest_name": data.guest_name, "items": [item.model_dump() for item in data.items]}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return {"message": "Order updated"}
+
+@api_router.delete("/events/{link_code}/orders/{order_id}")
+async def delete_event_order(link_code: str, order_id: str):
+    event = await db.events.find_one({"link_code": link_code}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    if event.get("status") == "sent":
+        raise HTTPException(status_code=400, detail="Event already sent to restaurant")
+    
+    result = await db.event_orders.delete_one({"id": order_id, "event_id": event["id"]})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return {"message": "Order deleted"}
+
+@api_router.post("/events/{link_code}/send")
+async def send_event_to_restaurant(link_code: str, organizer_email: str):
+    event = await db.events.find_one({"link_code": link_code}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    # Verify organizer
+    if event.get("organizer_email") != organizer_email:
+        raise HTTPException(status_code=403, detail="Only the organizer can send the event")
+    
+    # Get all orders
+    orders = await db.event_orders.find({"event_id": event["id"]}, {"_id": 0}).to_list(500)
+    
+    # Calculate totals
+    item_totals = {}
+    all_observations = []
+    
+    for order in orders:
+        for item in order.get("items", []):
+            key = item.get("name_fr", "Unknown")
+            if key not in item_totals:
+                item_totals[key] = {"quantity": 0, "price": item.get("price", 0)}
+            item_totals[key]["quantity"] += item.get("quantity", 1)
+            
+            if item.get("observation"):
+                all_observations.append({
+                    "guest": order.get("guest_name"),
+                    "item": key,
+                    "observation": item.get("observation")
+                })
+    
+    # Update event status
+    await db.events.update_one(
+        {"link_code": link_code},
+        {"$set": {"status": "sent"}}
+    )
+    
+    # Return summary for PDF generation on frontend
+    return {
+        "event": event,
+        "orders": orders,
+        "item_totals": item_totals,
+        "observations": all_observations,
+        "total_guests": len(orders)
+    }
+
+@api_router.delete("/events/{event_id}")
+async def delete_event(event_id: str, admin: dict = Depends(get_current_admin)):
+    # Delete all orders for this event
+    event = await db.events.find_one({"id": event_id}, {"_id": 0})
+    if event:
+        await db.event_orders.delete_many({"event_id": event_id})
+    
+    result = await db.events.delete_one({"id": event_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Event not found")
+    return {"message": "Event and orders deleted"}
 
 # --- IMAGE UPLOAD ROUTES ---
 

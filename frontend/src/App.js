@@ -11,6 +11,7 @@ import Menu from './pages/Menu';
 import WeeklyMenu from './pages/WeeklyMenu';
 import Gallery from './pages/Gallery';
 import Reservations from './pages/Reservations';
+import EventPage from './pages/EventPage';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import './App.css';
@@ -120,6 +121,9 @@ function AppContent() {
           } 
         />
         <Route path="/admin" element={<Navigate to="/admin/login" replace />} />
+
+        {/* Event Page (Hidden - only accessible via direct link) */}
+        <Route path="/evento/:linkCode" element={<EventPage />} />
 
         {/* Catch all */}
         <Route path="*" element={<Navigate to="/" replace />} />

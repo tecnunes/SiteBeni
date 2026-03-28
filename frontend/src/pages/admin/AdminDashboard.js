@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { 
   Menu, X, Home, Calendar, UtensilsCrossed, Settings, LogOut, 
   Plus, Trash2, Save, Image, Check, XCircle, FileText, BookOpen, Users, Images,
-  GripVertical, Edit2, FolderPlus
+  GripVertical, Edit2, FolderPlus, PartyPopper, Copy, ExternalLink
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -22,6 +22,7 @@ import { fr } from 'date-fns/locale';
 import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const SITE_URL = process.env.REACT_APP_BACKEND_URL?.replace('/api', '') || window.location.origin;
 
 const AdminDashboard = () => {
   const { t } = useLanguage();
@@ -42,10 +43,13 @@ const AdminDashboard = () => {
   const [siteSettings, setSiteSettings] = useState(null);
   const [admins, setAdmins] = useState([]);
   const [galleryImages, setGalleryImages] = useState([]);
+  const [events, setEvents] = useState([]);
   const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '' });
   const [newCategory, setNewCategory] = useState({ slug: '', name_fr: '', name_en: '', name_pt: '' });
   const [editingCategory, setEditingCategory] = useState(null);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
+  const [showEventForm, setShowEventForm] = useState(false);
+  const [newEvent, setNewEvent] = useState({ name: '', num_guests: 10, organizer_name: '', organizer_email: '', organizer_whatsapp: '' });
 
   // Menu form state
   const [menuForm, setMenuForm] = useState({
@@ -67,7 +71,7 @@ const AdminDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [menuRes, reservationsRes, menuItemsRes, categoriesRes, contentRes, settingsRes, adminsRes, galleryRes] = await Promise.all([
+      const [menuRes, reservationsRes, menuItemsRes, categoriesRes, contentRes, settingsRes, adminsRes, galleryRes, eventsRes] = await Promise.all([
         axios.get(`${API}/weekly-menu`),
         axios.get(`${API}/reservations`),
         axios.get(`${API}/menu-items`),
@@ -75,7 +79,8 @@ const AdminDashboard = () => {
         axios.get(`${API}/content`),
         axios.get(`${API}/settings`),
         axios.get(`${API}/auth/admins`),
-        axios.get(`${API}/gallery`)
+        axios.get(`${API}/gallery`),
+        axios.get(`${API}/events`)
       ]);
       
       if (menuRes.data) {
@@ -94,6 +99,7 @@ const AdminDashboard = () => {
       setSiteSettings(settingsRes.data || {});
       setAdmins(adminsRes.data || []);
       setGalleryImages(galleryRes.data || []);
+      setEvents(eventsRes.data || []);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -453,10 +459,53 @@ const AdminDashboard = () => {
     }
   };
 
+  // Event functions
+  const createEvent = async () => {
+    if (!newEvent.name || !newEvent.organizer_name || !newEvent.organizer_email) {
+      toast.error('Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+    setSaving(true);
+    try {
+      const response = await axios.post(`${API}/events`, newEvent);
+      toast.success('Événement créé!');
+      setNewEvent({ name: '', num_guests: 10, organizer_name: '', organizer_email: '', organizer_whatsapp: '' });
+      setShowEventForm(false);
+      fetchData();
+      
+      // Copy link to clipboard
+      const link = `${SITE_URL}/evento/${response.data.link_code}`;
+      navigator.clipboard.writeText(link);
+      toast.success('Lien copié dans le presse-papiers!');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erreur lors de la création');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteEvent = async (eventId) => {
+    if (!window.confirm('Supprimer cet événement et tous ses pedidos?')) return;
+    try {
+      await axios.delete(`${API}/events/${eventId}`);
+      toast.success('Événement supprimé');
+      fetchData();
+    } catch (error) {
+      toast.error('Erreur lors de la suppression');
+    }
+  };
+
+  const copyEventLink = (linkCode) => {
+    const link = `${SITE_URL}/evento/${linkCode}`;
+    navigator.clipboard.writeText(link);
+    toast.success('Lien copié!');
+  };
+
   const sidebarItems = [
     { id: 'weekly', icon: UtensilsCrossed, label: 'Menu Semaine' },
     { id: 'cardapio', icon: BookOpen, label: 'Cardápio Completo' },
     { id: 'categories', icon: FolderPlus, label: 'Catégories Menu' },
+    { id: 'events', icon: PartyPopper, label: 'Événements' },
     { id: 'gallery', icon: Images, label: 'Galerie' },
     { id: 'content', icon: FileText, label: 'Textes du Site' },
     { id: 'images', icon: Image, label: 'Images du Site' },
@@ -833,6 +882,152 @@ const AdminDashboard = () => {
                     </div>
                     {menuCategories.length === 0 && (
                       <p className="text-white/30 text-center py-8">Aucune catégorie créée</p>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Events Tab */}
+              {activeTab === 'events' && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+                  {/* Create Event Form */}
+                  <div className="bg-[#121212] border border-white/10 p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-white text-lg font-medium">Événements (Reserva de Pratos em Grupo)</h2>
+                      <Button onClick={() => setShowEventForm(!showEventForm)} className="bg-[#d4af37] text-black hover:bg-white">
+                        <Plus className="w-4 h-4 mr-2" />Nouvel Événement
+                      </Button>
+                    </div>
+
+                    {showEventForm && (
+                      <div className="bg-white/5 p-6 space-y-4 mt-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs text-white/70">Nom de l'événement *</Label>
+                            <Input 
+                              value={newEvent.name} 
+                              onChange={(e) => setNewEvent({...newEvent, name: e.target.value})} 
+                              className="bg-transparent border-white/20 text-white" 
+                              placeholder="Ex: Anniversaire Juliana" 
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-white/70">Nombre de convives</Label>
+                            <Input 
+                              type="number"
+                              value={newEvent.num_guests} 
+                              onChange={(e) => setNewEvent({...newEvent, num_guests: parseInt(e.target.value) || 10})} 
+                              className="bg-transparent border-white/20 text-white" 
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs text-white/70">Nom de l'organisateur *</Label>
+                            <Input 
+                              value={newEvent.organizer_name} 
+                              onChange={(e) => setNewEvent({...newEvent, organizer_name: e.target.value})} 
+                              className="bg-transparent border-white/20 text-white" 
+                              placeholder="Juliana Silva" 
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-white/70">Email de l'organisateur *</Label>
+                            <Input 
+                              type="email"
+                              value={newEvent.organizer_email} 
+                              onChange={(e) => setNewEvent({...newEvent, organizer_email: e.target.value})} 
+                              className="bg-transparent border-white/20 text-white" 
+                              placeholder="juliana@email.com" 
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-white/70">WhatsApp (optionnel)</Label>
+                            <Input 
+                              value={newEvent.organizer_whatsapp} 
+                              onChange={(e) => setNewEvent({...newEvent, organizer_whatsapp: e.target.value})} 
+                              className="bg-transparent border-white/20 text-white" 
+                              placeholder="+352 123 456 789" 
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-2 pt-4">
+                          <Button variant="outline" onClick={() => setShowEventForm(false)} className="border-white/20 text-white/70">
+                            Annuler
+                          </Button>
+                          <Button onClick={createEvent} disabled={saving} className="bg-[#d4af37] text-black hover:bg-white">
+                            <Save className="w-4 h-4 mr-2" />Créer et Copier le Lien
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Events List */}
+                  <div className="bg-[#121212] border border-white/10 p-6">
+                    <h3 className="text-white text-lg font-medium mb-4">Événements Actifs</h3>
+                    
+                    {events.length === 0 ? (
+                      <p className="text-white/30 text-center py-8">Aucun événement créé</p>
+                    ) : (
+                      <div className="space-y-4">
+                        {events.map(event => (
+                          <div key={event.id} className="bg-white/5 border border-white/10 p-4 space-y-3">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <h4 className="text-white font-medium text-lg">{event.name}</h4>
+                                <p className="text-white/50 text-sm">
+                                  Organisateur: {event.organizer_name} ({event.organizer_email})
+                                </p>
+                                <p className="text-white/50 text-sm">
+                                  Convives attendus: {event.num_guests}
+                                </p>
+                                <div className={`inline-block mt-2 px-2 py-1 text-xs rounded ${
+                                  event.status === 'sent' ? 'bg-green-500/20 text-green-400' : 
+                                  event.status === 'closed' ? 'bg-yellow-500/20 text-yellow-400' : 
+                                  'bg-blue-500/20 text-blue-400'
+                                }`}>
+                                  {event.status === 'sent' ? '✓ Envoyé' : 
+                                   event.status === 'closed' ? 'Fermé' : 
+                                   'Ouvert'}
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  onClick={() => copyEventLink(event.link_code)}
+                                  className="border-[#d4af37] text-[#d4af37]"
+                                >
+                                  <Copy className="w-4 h-4 mr-1" />Copier Lien
+                                </Button>
+                                <a 
+                                  href={`/evento/${event.link_code}`} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                >
+                                  <Button size="sm" variant="outline" className="border-white/20 text-white/70">
+                                    <ExternalLink className="w-4 h-4" />
+                                  </Button>
+                                </a>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  onClick={() => deleteEvent(event.id)}
+                                  className="border-red-500 text-red-500"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="bg-black/30 p-2 rounded flex items-center gap-2">
+                              <code className="text-[#d4af37] text-sm flex-1 truncate">
+                                {SITE_URL}/evento/{event.link_code}
+                              </code>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
                 </motion.div>
