@@ -1,24 +1,57 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, ChevronDown } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import axios from 'axios';
+
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const Home = () => {
   const { t } = useLanguage();
+  const [siteContent, setSiteContent] = useState(null);
+
+  useEffect(() => {
+    fetchSiteContent();
+  }, []);
+
+  const fetchSiteContent = async () => {
+    try {
+      const response = await axios.get(`${API}/content`);
+      setSiteContent(response.data);
+    } catch (error) {
+      console.error('Error fetching site content:', error);
+    }
+  };
 
   const scrollToContent = () => {
     window.scrollTo({ top: window.innerHeight, behavior: 'smooth' });
   };
 
+  // Default images as fallback
+  const heroImage = siteContent?.hero_image || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1920&q=80';
+  const aboutImage1 = siteContent?.about_image_1 || 'https://images.unsplash.com/photo-1600565193348-f74bd3c7ccdf?w=600&q=80';
+  const aboutImage2 = siteContent?.about_image_2 || 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&q=80';
+  const aboutImage3 = siteContent?.about_image_3 || 'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=600&q=80';
+  const reservationBgImage = siteContent?.reservation_bg_image || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1920&q=80';
+  const bgHome = siteContent?.bg_home || '';
+
   return (
-    <main className="min-h-screen bg-[#0a0a0a]" data-testid="home-page">
+    <main className="min-h-screen bg-[#0a0a0a] relative" data-testid="home-page">
+      {/* Optional Page Background */}
+      {bgHome && (
+        <div className="fixed inset-0 z-0">
+          <img src={bgHome} alt="" className="w-full h-full object-cover opacity-20" />
+          <div className="absolute inset-0 bg-[#0a0a0a]/80" />
+        </div>
+      )}
+      
       {/* Hero Section */}
       <section className="relative h-screen flex items-center justify-center overflow-hidden" data-testid="hero-section">
         {/* Background Image */}
         <div className="absolute inset-0">
           <img
-            src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1920&q=80"
+            src={heroImage}
             alt="BÉNI Restaurant Interior"
             className="w-full h-full object-cover"
           />
@@ -133,13 +166,13 @@ const Home = () => {
             >
               <div className="space-y-4">
                 <img
-                  src="https://images.unsplash.com/photo-1600565193348-f74bd3c7ccdf?w=600&q=80"
+                  src={aboutImage1}
                   alt="Chef cooking"
                   className="w-full h-48 object-cover"
                   data-testid="about-image-1"
                 />
                 <img
-                  src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&q=80"
+                  src={aboutImage2}
                   alt="Gourmet dish"
                   className="w-full h-64 object-cover"
                   data-testid="about-image-2"
@@ -147,7 +180,7 @@ const Home = () => {
               </div>
               <div className="pt-8">
                 <img
-                  src="https://images.unsplash.com/photo-1559339352-11d035aa65de?w=600&q=80"
+                  src={aboutImage3}
                   alt="Restaurant ambiance"
                   className="w-full h-80 object-cover"
                   data-testid="about-image-3"
@@ -162,7 +195,7 @@ const Home = () => {
       <section className="relative py-32 px-6 md:px-12" data-testid="reservation-cta-section">
         <div className="absolute inset-0">
           <img
-            src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1920&q=80"
+            src={reservationBgImage}
             alt="Restaurant atmosphere"
             className="w-full h-full object-cover"
           />

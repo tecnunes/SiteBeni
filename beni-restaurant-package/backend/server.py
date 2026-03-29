@@ -154,6 +154,26 @@ class MenuItemCreate(BaseModel):
     is_available: bool = True
     sort_order: int = 0
 
+# Menu Category Model (for dynamic categories)
+class MenuCategory(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    slug: str  # unique identifier like "starters", "mains"
+    name_fr: str
+    name_en: str
+    name_pt: str
+    sort_order: int = 0
+    is_active: bool = True
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class MenuCategoryCreate(BaseModel):
+    slug: str
+    name_fr: str
+    name_en: str
+    name_pt: str
+    sort_order: int = 0
+    is_active: bool = True
+
 # Site Content Model (for texts)
 class SiteContent(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -180,7 +200,33 @@ class SiteContent(BaseModel):
     about_image_3: str = "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=600&q=80"
     chef_image: str = "https://images.unsplash.com/photo-1600565193348-f74bd3c7ccdf?w=800&q=80"
     reservation_bg_image: str = "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1920&q=80"
+    # Page Background Images (optional - if not set, pages use default style)
+    bg_home: str = ""
+    bg_about: str = ""
+    bg_menu: str = ""
+    bg_gallery: str = ""
+    bg_reservations: str = ""
     updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+# Gallery Image Model
+class GalleryImage(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    url: str
+    category: str  # "ambiance", "dishes", "team"
+    alt_fr: str = ""
+    alt_en: str = ""
+    alt_pt: str = ""
+    sort_order: int = 0
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class GalleryImageCreate(BaseModel):
+    url: str
+    category: str
+    alt_fr: str = ""
+    alt_en: str = ""
+    alt_pt: str = ""
+    sort_order: int = 0
 
 class ReservationCreate(BaseModel):
     name: str
@@ -203,6 +249,50 @@ class Reservation(BaseModel):
     notes: str = ""
     status: str = "pending"  # pending, confirmed, cancelled
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+# --- EVENT MODELS (Reserva de Pratos em Grupo) ---
+
+class EventOrderItem(BaseModel):
+    item_id: str
+    name_fr: str
+    name_en: str = ""
+    name_pt: str = ""
+    price: float
+    quantity: int = 1
+    observation: str = ""
+
+class EventOrder(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    event_id: str
+    guest_name: str
+    items: List[EventOrderItem] = []
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class EventOrderCreate(BaseModel):
+    guest_name: str
+    items: List[EventOrderItem]
+
+class Event(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str  # Nome do evento (ex: "Evento Juliana")
+    num_guests: int  # Número de pessoas esperadas
+    organizer_name: str
+    organizer_email: str
+    organizer_whatsapp: str = ""
+    organizer_password: str = ""  # Senha para a organizadora acessar
+    link_code: str = Field(default_factory=lambda: str(uuid.uuid4())[:8])  # Código único para o link
+    status: str = "open"  # open, closed, sent
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class EventCreate(BaseModel):
+    name: str
+    num_guests: int
+    organizer_name: str
+    organizer_email: str
+    organizer_whatsapp: str = ""
+    organizer_password: str  # Senha obrigatória
 
 # --- HELPER FUNCTIONS ---
 
@@ -403,6 +493,62 @@ async def update_site_content(data: SiteContent, admin: dict = Depends(get_curre
     )
     return data
 
+# --- MENU CATEGORIES ROUTES ---
+
+@api_router.get("/menu-categories", response_model=List[MenuCategory])
+async def get_menu_categories():
+    categories = await db.menu_categories.find({}, {"_id": 0}).sort("sort_order", 1).to_list(50)
+    return categories
+
+@api_router.post("/menu-categories", response_model=MenuCategory)
+async def create_menu_category(data: MenuCategoryCreate, admin: dict = Depends(get_current_admin)):
+    # Check if slug already exists
+    existing = await db.menu_categories.find_one({"slug": data.slug}, {"_id": 0})
+    if existing:
+        raise HTTPException(status_code=400, detail="Category slug already exists")
+    
+    category = MenuCategory(**data.model_dump())
+    await db.menu_categories.insert_one(category.model_dump())
+    return category
+
+@api_router.put("/menu-categories/{category_id}", response_model=MenuCategory)
+async def update_menu_category(category_id: str, data: MenuCategoryCreate, admin: dict = Depends(get_current_admin)):
+    update_data = data.model_dump()
+    
+    result = await db.menu_categories.update_one(
+        {"id": category_id},
+        {"$set": update_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Category not found")
+    
+    category = await db.menu_categories.find_one({"id": category_id}, {"_id": 0})
+    return category
+
+@api_router.put("/menu-categories/reorder", response_model=List[MenuCategory])
+async def reorder_menu_categories(category_orders: List[dict], admin: dict = Depends(get_current_admin)):
+    for item in category_orders:
+        await db.menu_categories.update_one(
+            {"id": item["id"]},
+            {"$set": {"sort_order": item["sort_order"]}}
+        )
+    categories = await db.menu_categories.find({}, {"_id": 0}).sort("sort_order", 1).to_list(50)
+    return categories
+
+@api_router.delete("/menu-categories/{category_id}")
+async def delete_menu_category(category_id: str, admin: dict = Depends(get_current_admin)):
+    # Check if there are items in this category
+    category = await db.menu_categories.find_one({"id": category_id}, {"_id": 0})
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    
+    items_count = await db.menu_items.count_documents({"category": category["slug"]})
+    if items_count > 0:
+        raise HTTPException(status_code=400, detail=f"Cannot delete category with {items_count} items. Move or delete items first.")
+    
+    result = await db.menu_categories.delete_one({"id": category_id})
+    return {"message": "Category deleted"}
+
 # --- MENU ITEMS ROUTES (Cardápio Completo) ---
 
 @api_router.get("/menu-items", response_model=List[MenuItem])
@@ -441,6 +587,45 @@ async def delete_menu_item(item_id: str, admin: dict = Depends(get_current_admin
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Menu item not found")
     return {"message": "Menu item deleted"}
+
+# --- GALLERY ROUTES ---
+
+@api_router.get("/gallery", response_model=List[GalleryImage])
+async def get_gallery_images():
+    images = await db.gallery.find({}, {"_id": 0}).sort("sort_order", 1).to_list(100)
+    return images
+
+@api_router.get("/gallery/{category}", response_model=List[GalleryImage])
+async def get_gallery_by_category(category: str):
+    images = await db.gallery.find({"category": category}, {"_id": 0}).sort("sort_order", 1).to_list(50)
+    return images
+
+@api_router.post("/gallery", response_model=GalleryImage)
+async def create_gallery_image(data: GalleryImageCreate, admin: dict = Depends(get_current_admin)):
+    image = GalleryImage(**data.model_dump())
+    await db.gallery.insert_one(image.model_dump())
+    return image
+
+@api_router.put("/gallery/{image_id}", response_model=GalleryImage)
+async def update_gallery_image(image_id: str, data: GalleryImageCreate, admin: dict = Depends(get_current_admin)):
+    update_data = data.model_dump()
+    
+    result = await db.gallery.update_one(
+        {"id": image_id},
+        {"$set": update_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Gallery image not found")
+    
+    image = await db.gallery.find_one({"id": image_id}, {"_id": 0})
+    return image
+
+@api_router.delete("/gallery/{image_id}")
+async def delete_gallery_image(image_id: str, admin: dict = Depends(get_current_admin)):
+    result = await db.gallery.delete_one({"id": image_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Gallery image not found")
+    return {"message": "Gallery image deleted"}
 
 # --- RESERVATIONS ROUTES ---
 
@@ -482,6 +667,186 @@ async def delete_reservation(reservation_id: str, admin: dict = Depends(get_curr
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Reservation not found")
     return {"message": "Reservation deleted"}
+
+# --- EVENT ROUTES (Reserva de Pratos em Grupo) ---
+
+@api_router.post("/events", response_model=Event)
+async def create_event(data: EventCreate, admin: dict = Depends(get_current_admin)):
+    event = Event(
+        name=data.name,
+        num_guests=data.num_guests,
+        organizer_name=data.organizer_name,
+        organizer_email=data.organizer_email,
+        organizer_whatsapp=data.organizer_whatsapp,
+        organizer_password=data.organizer_password
+    )
+    await db.events.insert_one(event.model_dump())
+    return event
+
+@api_router.get("/events", response_model=List[Event])
+async def get_events(admin: dict = Depends(get_current_admin)):
+    events = await db.events.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return events
+
+@api_router.get("/events/{link_code}")
+async def get_event_by_link(link_code: str):
+    event = await db.events.find_one({"link_code": link_code}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    # Remove password from public response
+    event_public = {k: v for k, v in event.items() if k != "organizer_password"}
+    return event_public
+
+@api_router.post("/events/{link_code}/auth")
+async def authenticate_organizer(link_code: str, password: str):
+    """Authenticate organizer with password"""
+    event = await db.events.find_one({"link_code": link_code}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    if event.get("organizer_password") != password:
+        raise HTTPException(status_code=401, detail="Invalid password")
+    
+    return {"authenticated": True, "organizer_name": event.get("organizer_name")}
+
+@api_router.get("/events/{link_code}/orders")
+async def get_event_orders(link_code: str, password: str):
+    """Get orders - requires organizer password"""
+    event = await db.events.find_one({"link_code": link_code}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    # Verify organizer password
+    if event.get("organizer_password") != password:
+        raise HTTPException(status_code=401, detail="Invalid password")
+    
+    orders = await db.event_orders.find({"event_id": event["id"]}, {"_id": 0}).to_list(500)
+    return orders
+
+@api_router.get("/events/{link_code}/orders/count")
+async def get_event_orders_count(link_code: str):
+    """Get orders count - public endpoint"""
+    event = await db.events.find_one({"link_code": link_code}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    count = await db.event_orders.count_documents({"event_id": event["id"]})
+    return {"count": count}
+
+@api_router.post("/events/{link_code}/orders", response_model=EventOrder)
+async def add_event_order(link_code: str, data: EventOrderCreate):
+    """Add order - public endpoint, but once submitted cannot be edited"""
+    event = await db.events.find_one({"link_code": link_code}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    if event.get("status") == "sent":
+        raise HTTPException(status_code=400, detail="Event already sent to restaurant")
+    
+    order = EventOrder(
+        event_id=event["id"],
+        guest_name=data.guest_name,
+        items=[item.model_dump() for item in data.items]
+    )
+    await db.event_orders.insert_one(order.model_dump())
+    return order
+
+@api_router.put("/events/{link_code}/orders/{order_id}")
+async def update_event_order(link_code: str, order_id: str, data: EventOrderCreate, password: str):
+    """Update order - requires organizer password"""
+    event = await db.events.find_one({"link_code": link_code}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    if event.get("status") == "sent":
+        raise HTTPException(status_code=400, detail="Event already sent to restaurant")
+    
+    # Verify organizer password
+    if event.get("organizer_password") != password:
+        raise HTTPException(status_code=401, detail="Only organizer can edit orders")
+    
+    result = await db.event_orders.update_one(
+        {"id": order_id, "event_id": event["id"]},
+        {"$set": {"guest_name": data.guest_name, "items": [item.model_dump() for item in data.items]}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return {"message": "Order updated"}
+
+@api_router.delete("/events/{link_code}/orders/{order_id}")
+async def delete_event_order(link_code: str, order_id: str, password: str):
+    """Delete order - requires organizer password"""
+    event = await db.events.find_one({"link_code": link_code}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    if event.get("status") == "sent":
+        raise HTTPException(status_code=400, detail="Event already sent to restaurant")
+    
+    # Verify organizer password
+    if event.get("organizer_password") != password:
+        raise HTTPException(status_code=401, detail="Only organizer can delete orders")
+    
+    result = await db.event_orders.delete_one({"id": order_id, "event_id": event["id"]})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return {"message": "Order deleted"}
+
+@api_router.post("/events/{link_code}/send")
+async def send_event_to_restaurant(link_code: str, password: str):
+    """Send event to restaurant - requires organizer password"""
+    event = await db.events.find_one({"link_code": link_code}, {"_id": 0})
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    # Verify organizer password
+    if event.get("organizer_password") != password:
+        raise HTTPException(status_code=401, detail="Invalid password")
+    
+    # Get all orders
+    orders = await db.event_orders.find({"event_id": event["id"]}, {"_id": 0}).to_list(500)
+    
+    # Calculate totals
+    item_totals = {}
+    all_observations = []
+    
+    for order in orders:
+        for item in order.get("items", []):
+            key = item.get("name_fr", "Unknown")
+            if key not in item_totals:
+                item_totals[key] = {"quantity": 0, "price": item.get("price", 0)}
+            item_totals[key]["quantity"] += item.get("quantity", 1)
+            
+            if item.get("observation"):
+                all_observations.append({
+                    "guest": order.get("guest_name"),
+                    "item": key,
+                    "observation": item.get("observation")
+                })
+    
+    # Update event status
+    await db.events.update_one(
+        {"link_code": link_code},
+        {"$set": {"status": "sent"}}
+    )
+    
+    # Return summary for PDF generation on frontend
+    return {
+        "event": event,
+        "orders": orders,
+        "item_totals": item_totals,
+        "observations": all_observations,
+        "total_guests": len(orders)
+    }
+
+@api_router.delete("/events/{event_id}")
+async def delete_event(event_id: str, admin: dict = Depends(get_current_admin)):
+    # Delete all orders for this event
+    event = await db.events.find_one({"id": event_id}, {"_id": 0})
+    if event:
+        await db.event_orders.delete_many({"event_id": event_id})
+    
+    result = await db.events.delete_one({"id": event_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Event not found")
+    return {"message": "Event and orders deleted"}
 
 # --- IMAGE UPLOAD ROUTES ---
 
@@ -561,6 +926,92 @@ async def startup_event():
         }
         await db.admins.insert_one(admin_doc)
         print("Default admin created: admin / #Sti93qn06301616")
+    
+    # Create default gallery images if gallery is empty
+    gallery_count = await db.gallery.count_documents({})
+    if gallery_count == 0:
+        default_images = [
+            # Ambiance
+            {"url": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80", "category": "ambiance", "alt_fr": "Intérieur du restaurant", "alt_en": "Restaurant interior", "alt_pt": "Interior do restaurante", "sort_order": 0},
+            {"url": "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800&q=80", "category": "ambiance", "alt_fr": "Salle à manger", "alt_en": "Dining area", "alt_pt": "Área de refeições", "sort_order": 1},
+            {"url": "https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?w=800&q=80", "category": "ambiance", "alt_fr": "Bar", "alt_en": "Bar area", "alt_pt": "Área do bar", "sort_order": 2},
+            {"url": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80", "category": "ambiance", "alt_fr": "Ambiance soirée", "alt_en": "Evening ambiance", "alt_pt": "Ambiente noturno", "sort_order": 3},
+            {"url": "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800&q=80", "category": "ambiance", "alt_fr": "Terrasse", "alt_en": "Restaurant terrace", "alt_pt": "Terraço do restaurante", "sort_order": 4},
+            {"url": "https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800&q=80", "category": "ambiance", "alt_fr": "Cave à vin", "alt_en": "Wine cellar", "alt_pt": "Adega", "sort_order": 5},
+            # Dishes
+            {"url": "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80", "category": "dishes", "alt_fr": "Plat gastronomique", "alt_en": "Gourmet dish", "alt_pt": "Prato gourmet", "sort_order": 0},
+            {"url": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80", "category": "dishes", "alt_fr": "Repas", "alt_en": "Plated meal", "alt_pt": "Refeição", "sort_order": 1},
+            {"url": "https://images.unsplash.com/photo-1544025162-d76694265947?w=800&q=80", "category": "dishes", "alt_fr": "Côtes de porc", "alt_en": "BBQ ribs", "alt_pt": "Costelas", "sort_order": 2},
+            {"url": "https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=800&q=80", "category": "dishes", "alt_fr": "Pâtes", "alt_en": "Pasta dish", "alt_pt": "Massa", "sort_order": 3},
+            {"url": "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=800&q=80", "category": "dishes", "alt_fr": "Salade", "alt_en": "Salad bowl", "alt_pt": "Salada", "sort_order": 4},
+            {"url": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&q=80", "category": "dishes", "alt_fr": "Pizza", "alt_en": "Pizza", "alt_pt": "Pizza", "sort_order": 5},
+            {"url": "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=800&q=80", "category": "dishes", "alt_fr": "Crêpes", "alt_en": "Pancakes", "alt_pt": "Panquecas", "sort_order": 6},
+            {"url": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80", "category": "dishes", "alt_fr": "Bowl healthy", "alt_en": "Healthy bowl", "alt_pt": "Bowl saudável", "sort_order": 7},
+            {"url": "https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=800&q=80", "category": "dishes", "alt_fr": "Dessert", "alt_en": "Cake dessert", "alt_pt": "Sobremesa", "sort_order": 8},
+            # Team
+            {"url": "https://images.unsplash.com/photo-1600565193348-f74bd3c7ccdf?w=800&q=80", "category": "team", "alt_fr": "Chef en cuisine", "alt_en": "Chef cooking", "alt_pt": "Chef cozinhando", "sort_order": 0},
+            {"url": "https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=800&q=80", "category": "team", "alt_fr": "Équipe cuisine", "alt_en": "Kitchen team", "alt_pt": "Equipe de cozinha", "sort_order": 1},
+            {"url": "https://images.unsplash.com/photo-1581299894007-aaa50297cf16?w=800&q=80", "category": "team", "alt_fr": "Portrait du chef", "alt_en": "Chef portrait", "alt_pt": "Retrato do chef", "sort_order": 2},
+            {"url": "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80", "category": "team", "alt_fr": "En cuisine", "alt_en": "Cooking process", "alt_pt": "Processo de cozinha", "sort_order": 3},
+        ]
+        for img_data in default_images:
+            image = GalleryImage(**img_data)
+            await db.gallery.insert_one(image.model_dump())
+        print(f"Created {len(default_images)} default gallery images")
+    
+    # Create default menu categories if empty
+    categories_count = await db.menu_categories.count_documents({})
+    if categories_count == 0:
+        default_categories = [
+            {"slug": "starters", "name_fr": "Entrées", "name_en": "Starters", "name_pt": "Entradas", "sort_order": 0},
+            {"slug": "mains", "name_fr": "Plats Principaux", "name_en": "Main Courses", "name_pt": "Pratos Principais", "sort_order": 1},
+            {"slug": "seafood", "name_fr": "Poissons & Fruits de Mer", "name_en": "Fish & Seafood", "name_pt": "Peixes & Frutos do Mar", "sort_order": 2},
+            {"slug": "desserts", "name_fr": "Desserts", "name_en": "Desserts", "name_pt": "Sobremesas", "sort_order": 3},
+            {"slug": "drinks", "name_fr": "Boissons", "name_en": "Drinks", "name_pt": "Bebidas", "sort_order": 4},
+        ]
+        for cat_data in default_categories:
+            category = MenuCategory(**cat_data)
+            await db.menu_categories.insert_one(category.model_dump())
+        print(f"Created {len(default_categories)} default menu categories")
+    
+    # Create default menu items if empty
+    menu_items_count = await db.menu_items.count_documents({})
+    if menu_items_count == 0:
+        default_menu_items = [
+            # Entrées
+            {"category": "starters", "name_fr": "Carpaccio de Bœuf", "name_en": "Beef Carpaccio", "name_pt": "Carpaccio de Carne", "description_fr": "Bœuf finement tranché, roquette, parmesan, huile de truffe", "description_en": "Thinly sliced beef, arugula, parmesan, truffle oil", "description_pt": "Carne finamente fatiada, rúcula, parmesão, óleo de trufa", "price": 16.50, "sort_order": 0},
+            {"category": "starters", "name_fr": "Foie Gras Maison", "name_en": "Homemade Foie Gras", "name_pt": "Foie Gras da Casa", "description_fr": "Foie gras mi-cuit, chutney de figues, brioche toastée", "description_en": "Semi-cooked foie gras, fig chutney, toasted brioche", "description_pt": "Foie gras semicozido, chutney de figo, brioche torrada", "price": 22.00, "sort_order": 1},
+            {"category": "starters", "name_fr": "Burrata Crémeuse", "name_en": "Creamy Burrata", "name_pt": "Burrata Cremosa", "description_fr": "Burrata fraîche, tomates cerises, basilic, huile d'olive", "description_en": "Fresh burrata, cherry tomatoes, basil, olive oil", "description_pt": "Burrata fresca, tomate cereja, manjericão, azeite", "price": 14.50, "sort_order": 2},
+            {"category": "starters", "name_fr": "Velouté de Champignons", "name_en": "Mushroom Velouté", "name_pt": "Velouté de Cogumelos", "description_fr": "Champignons des bois, crème fraîche, croûtons dorés", "description_en": "Wild mushrooms, fresh cream, golden croutons", "description_pt": "Cogumelos silvestres, creme fresco, croutons dourados", "price": 12.00, "sort_order": 3},
+            
+            # Plats Principaux
+            {"category": "mains", "name_fr": "Filet de Bœuf Rossini", "name_en": "Beef Filet Rossini", "name_pt": "Filé Mignon Rossini", "description_fr": "Filet de bœuf, foie gras poêlé, sauce aux truffes", "description_en": "Beef filet, pan-seared foie gras, truffle sauce", "description_pt": "Filé mignon, foie gras grelhado, molho de trufas", "price": 38.00, "sort_order": 0},
+            {"category": "mains", "name_fr": "Magret de Canard", "name_en": "Duck Breast", "name_pt": "Magret de Pato", "description_fr": "Magret rôti, sauce aux cerises, purée de patate douce", "description_en": "Roasted duck breast, cherry sauce, sweet potato purée", "description_pt": "Magret assado, molho de cereja, purê de batata doce", "price": 32.00, "sort_order": 1},
+            {"category": "mains", "name_fr": "Risotto aux Cèpes", "name_en": "Porcini Risotto", "name_pt": "Risoto de Cogumelos", "description_fr": "Riz carnaroli, cèpes frais, parmesan, huile de truffe", "description_en": "Carnaroli rice, fresh porcini, parmesan, truffle oil", "description_pt": "Arroz carnaroli, cogumelos frescos, parmesão, óleo de trufa", "price": 26.00, "sort_order": 2},
+            {"category": "mains", "name_fr": "Côte de Veau Grillée", "name_en": "Grilled Veal Chop", "name_pt": "Costela de Vitela Grelhada", "description_fr": "Côte de veau, légumes de saison, jus corsé", "description_en": "Veal chop, seasonal vegetables, rich jus", "description_pt": "Costela de vitela, legumes da estação, molho encorpado", "price": 35.00, "sort_order": 3},
+            
+            # Poissons & Fruits de Mer
+            {"category": "seafood", "name_fr": "Bar en Croûte de Sel", "name_en": "Salt-Crusted Sea Bass", "name_pt": "Robalo em Crosta de Sal", "description_fr": "Bar entier, croûte de sel aux herbes, légumes grillés", "description_en": "Whole sea bass, herb salt crust, grilled vegetables", "description_pt": "Robalo inteiro, crosta de sal com ervas, legumes grelhados", "price": 34.00, "sort_order": 0},
+            {"category": "seafood", "name_fr": "Homard Thermidor", "name_en": "Lobster Thermidor", "name_pt": "Lagosta Thermidor", "description_fr": "Demi-homard, sauce crémeuse gratinée, riz sauvage", "description_en": "Half lobster, creamy gratin sauce, wild rice", "description_pt": "Meia lagosta, molho cremoso gratinado, arroz selvagem", "price": 48.00, "sort_order": 1},
+            {"category": "seafood", "name_fr": "Saint-Jacques Poêlées", "name_en": "Pan-Seared Scallops", "name_pt": "Vieiras Grelhadas", "description_fr": "Noix de Saint-Jacques, purée de céleri, beurre noisette", "description_en": "Scallops, celery purée, brown butter", "description_pt": "Vieiras, purê de aipo, manteiga dourada", "price": 32.00, "sort_order": 2},
+            {"category": "seafood", "name_fr": "Sole Meunière", "name_en": "Sole Meunière", "name_pt": "Linguado Meunière", "description_fr": "Sole entière, beurre citronné, câpres, persil", "description_en": "Whole sole, lemon butter, capers, parsley", "description_pt": "Linguado inteiro, manteiga de limão, alcaparras, salsa", "price": 36.00, "sort_order": 3},
+            
+            # Desserts
+            {"category": "desserts", "name_fr": "Fondant au Chocolat", "name_en": "Chocolate Fondant", "name_pt": "Fondant de Chocolate", "description_fr": "Cœur coulant, glace vanille, crumble", "description_en": "Molten center, vanilla ice cream, crumble", "description_pt": "Centro derretido, sorvete de baunilha, crumble", "price": 12.00, "sort_order": 0},
+            {"category": "desserts", "name_fr": "Crème Brûlée", "name_en": "Crème Brûlée", "name_pt": "Crème Brûlée", "description_fr": "Crème vanille, caramel croustillant", "description_en": "Vanilla cream, crispy caramel", "description_pt": "Creme de baunilha, caramelo crocante", "price": 10.00, "sort_order": 1},
+            {"category": "desserts", "name_fr": "Tarte Tatin", "name_en": "Tarte Tatin", "name_pt": "Tarte Tatin", "description_fr": "Pommes caramélisées, pâte feuilletée, crème fraîche", "description_en": "Caramelized apples, puff pastry, fresh cream", "description_pt": "Maçãs caramelizadas, massa folhada, creme fresco", "price": 11.00, "sort_order": 2},
+            {"category": "desserts", "name_fr": "Assiette de Fromages", "name_en": "Cheese Plate", "name_pt": "Tábua de Queijos", "description_fr": "Sélection de fromages affinés, confiture, noix", "description_en": "Selection of aged cheeses, jam, nuts", "description_pt": "Seleção de queijos maturados, geleia, nozes", "price": 14.00, "sort_order": 3},
+            
+            # Boissons
+            {"category": "drinks", "name_fr": "Eau Minérale", "name_en": "Mineral Water", "name_pt": "Água Mineral", "description_fr": "Plate ou gazeuse, 75cl", "description_en": "Still or sparkling, 75cl", "description_pt": "Com ou sem gás, 75cl", "price": 5.00, "sort_order": 0},
+            {"category": "drinks", "name_fr": "Café Espresso", "name_en": "Espresso Coffee", "name_pt": "Café Espresso", "description_fr": "Café italien premium", "description_en": "Premium Italian coffee", "description_pt": "Café italiano premium", "price": 3.50, "sort_order": 1},
+            {"category": "drinks", "name_fr": "Thé Selection", "name_en": "Tea Selection", "name_pt": "Seleção de Chás", "description_fr": "Thés fins, infusions", "description_en": "Fine teas, infusions", "description_pt": "Chás finos, infusões", "price": 4.50, "sort_order": 2},
+            {"category": "drinks", "name_fr": "Digestif Maison", "name_en": "House Digestif", "name_pt": "Digestivo da Casa", "description_fr": "Sélection de liqueurs et eaux-de-vie", "description_en": "Selection of liqueurs and brandies", "description_pt": "Seleção de licores e aguardentes", "price": 8.00, "sort_order": 3},
+        ]
+        for item_data in default_menu_items:
+            item = MenuItem(**item_data)
+            await db.menu_items.insert_one(item.model_dump())
+        print(f"Created {len(default_menu_items)} default menu items")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

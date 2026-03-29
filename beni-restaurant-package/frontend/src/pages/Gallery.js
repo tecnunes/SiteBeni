@@ -1,12 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import axios from 'axios';
+
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const Gallery = () => {
   const { language } = useLanguage();
   const [selectedImage, setSelectedImage] = useState(null);
   const [activeCategory, setActiveCategory] = useState('all');
+  const [images, setImages] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const content = {
     fr: {
@@ -28,39 +33,61 @@ const Gallery = () => {
 
   const c = content[language];
 
-  const images = [
-    // Ambiance
-    { src: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80', category: 'ambiance', alt: 'Restaurant interior' },
-    { src: 'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800&q=80', category: 'ambiance', alt: 'Dining area' },
-    { src: 'https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?w=800&q=80', category: 'ambiance', alt: 'Bar area' },
-    { src: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80', category: 'ambiance', alt: 'Evening ambiance' },
-    { src: 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800&q=80', category: 'ambiance', alt: 'Restaurant terrace' },
-    { src: 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800&q=80', category: 'ambiance', alt: 'Wine cellar' },
-    
-    // Dishes
-    { src: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80', category: 'dishes', alt: 'Gourmet dish' },
-    { src: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80', category: 'dishes', alt: 'Plated meal' },
-    { src: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=800&q=80', category: 'dishes', alt: 'BBQ ribs' },
-    { src: 'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=800&q=80', category: 'dishes', alt: 'Pasta dish' },
-    { src: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=800&q=80', category: 'dishes', alt: 'Salad bowl' },
-    { src: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&q=80', category: 'dishes', alt: 'Pizza' },
-    { src: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=800&q=80', category: 'dishes', alt: 'Pancakes' },
-    { src: 'https://images.unsplash.com/photo-1482049016gy6-74ac62b6f2c7?w=800&q=80', category: 'dishes', alt: 'Seafood' },
-    { src: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80', category: 'dishes', alt: 'Healthy bowl' },
-    { src: 'https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=800&q=80', category: 'dishes', alt: 'Cake dessert' },
-    
-    // Team
-    { src: 'https://images.unsplash.com/photo-1600565193348-f74bd3c7ccdf?w=800&q=80', category: 'team', alt: 'Chef cooking' },
-    { src: 'https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=800&q=80', category: 'team', alt: 'Kitchen team' },
-    { src: 'https://images.unsplash.com/photo-1581299894007-aaa50297cf16?w=800&q=80', category: 'team', alt: 'Chef portrait' },
-    { src: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80', category: 'team', alt: 'Cooking process' },
+  // Fallback images for when database is empty
+  const fallbackImages = [
+    { url: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80', category: 'ambiance', alt_fr: 'Restaurant interior', alt_en: 'Restaurant interior', alt_pt: 'Interior do restaurante' },
+    { url: 'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800&q=80', category: 'ambiance', alt_fr: 'Dining area', alt_en: 'Dining area', alt_pt: 'Área de refeições' },
+    { url: 'https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?w=800&q=80', category: 'ambiance', alt_fr: 'Bar area', alt_en: 'Bar area', alt_pt: 'Área do bar' },
+    { url: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80', category: 'ambiance', alt_fr: 'Evening ambiance', alt_en: 'Evening ambiance', alt_pt: 'Ambiente noturno' },
+    { url: 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800&q=80', category: 'ambiance', alt_fr: 'Restaurant terrace', alt_en: 'Restaurant terrace', alt_pt: 'Terraço do restaurante' },
+    { url: 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=800&q=80', category: 'ambiance', alt_fr: 'Wine cellar', alt_en: 'Wine cellar', alt_pt: 'Adega' },
+    { url: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80', category: 'dishes', alt_fr: 'Gourmet dish', alt_en: 'Gourmet dish', alt_pt: 'Prato gourmet' },
+    { url: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80', category: 'dishes', alt_fr: 'Plated meal', alt_en: 'Plated meal', alt_pt: 'Refeição' },
+    { url: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=800&q=80', category: 'dishes', alt_fr: 'BBQ ribs', alt_en: 'BBQ ribs', alt_pt: 'Costelas' },
+    { url: 'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=800&q=80', category: 'dishes', alt_fr: 'Pasta dish', alt_en: 'Pasta dish', alt_pt: 'Massa' },
+    { url: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=800&q=80', category: 'dishes', alt_fr: 'Salad bowl', alt_en: 'Salad bowl', alt_pt: 'Salada' },
+    { url: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&q=80', category: 'dishes', alt_fr: 'Pizza', alt_en: 'Pizza', alt_pt: 'Pizza' },
+    { url: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=800&q=80', category: 'dishes', alt_fr: 'Pancakes', alt_en: 'Pancakes', alt_pt: 'Panquecas' },
+    { url: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80', category: 'dishes', alt_fr: 'Healthy bowl', alt_en: 'Healthy bowl', alt_pt: 'Bowl saudável' },
+    { url: 'https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=800&q=80', category: 'dishes', alt_fr: 'Cake dessert', alt_en: 'Cake dessert', alt_pt: 'Sobremesa' },
+    { url: 'https://images.unsplash.com/photo-1600565193348-f74bd3c7ccdf?w=800&q=80', category: 'team', alt_fr: 'Chef cooking', alt_en: 'Chef cooking', alt_pt: 'Chef cozinhando' },
+    { url: 'https://images.unsplash.com/photo-1577219491135-ce391730fb2c?w=800&q=80', category: 'team', alt_fr: 'Kitchen team', alt_en: 'Kitchen team', alt_pt: 'Equipe de cozinha' },
+    { url: 'https://images.unsplash.com/photo-1581299894007-aaa50297cf16?w=800&q=80', category: 'team', alt_fr: 'Chef portrait', alt_en: 'Chef portrait', alt_pt: 'Retrato do chef' },
+    { url: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&q=80', category: 'team', alt_fr: 'Cooking process', alt_en: 'Cooking process', alt_pt: 'Processo de cozinha' },
   ];
+
+  useEffect(() => {
+    fetchGalleryImages();
+  }, []);
+
+  const fetchGalleryImages = async () => {
+    try {
+      const response = await axios.get(`${API}/gallery`);
+      if (response.data && response.data.length > 0) {
+        setImages(response.data);
+      } else {
+        // Use fallback images if database is empty
+        setImages(fallbackImages);
+      }
+    } catch (error) {
+      console.error('Error fetching gallery:', error);
+      // Use fallback images on error
+      setImages(fallbackImages);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getAlt = (image) => {
+    const altKey = `alt_${language}`;
+    return image[altKey] || image.alt_fr || image.alt_en || 'Gallery image';
+  };
 
   const filteredImages = activeCategory === 'all' 
     ? images 
     : images.filter(img => img.category === activeCategory);
 
-  const currentIndex = selectedImage ? filteredImages.findIndex(img => img.src === selectedImage.src) : -1;
+  const currentIndex = selectedImage ? filteredImages.findIndex(img => img.url === selectedImage.url) : -1;
 
   const navigateImage = (direction) => {
     if (currentIndex === -1) return;
@@ -124,36 +151,42 @@ const Gallery = () => {
       {/* Gallery Grid */}
       <section className="px-6 md:px-12 pb-24">
         <div className="max-w-6xl mx-auto">
-          <motion.div 
-            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
-            layout
-          >
-            <AnimatePresence mode="popLayout">
-              {filteredImages.map((image, index) => (
-                <motion.div
-                  key={image.src}
-                  layout
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  transition={{ duration: 0.4, delay: index * 0.03 }}
-                  className={`cursor-pointer overflow-hidden ${
-                    index % 5 === 0 ? 'md:col-span-2 md:row-span-2' : ''
-                  }`}
-                  onClick={() => setSelectedImage(image)}
-                  data-testid={`gallery-image-${index}`}
-                >
-                  <img
-                    src={image.src}
-                    alt={image.alt}
-                    className={`w-full object-cover hover:scale-110 transition-transform duration-700 ${
-                      index % 5 === 0 ? 'h-full min-h-[300px] md:min-h-[400px]' : 'h-48 md:h-56'
+          {loading ? (
+            <div className="flex justify-center items-center py-20">
+              <Loader2 className="w-8 h-8 text-[#d4af37] animate-spin" />
+            </div>
+          ) : (
+            <motion.div 
+              className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+              layout
+            >
+              <AnimatePresence mode="popLayout">
+                {filteredImages.map((image, index) => (
+                  <motion.div
+                    key={image.url + index}
+                    layout
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.4, delay: index * 0.03 }}
+                    className={`cursor-pointer overflow-hidden ${
+                      index % 5 === 0 ? 'md:col-span-2 md:row-span-2' : ''
                     }`}
-                  />
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </motion.div>
+                    onClick={() => setSelectedImage(image)}
+                    data-testid={`gallery-image-${index}`}
+                  >
+                    <img
+                      src={image.url}
+                      alt={getAlt(image)}
+                      className={`w-full object-cover hover:scale-110 transition-transform duration-700 ${
+                        index % 5 === 0 ? 'h-full min-h-[300px] md:min-h-[400px]' : 'h-48 md:h-56'
+                      }`}
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </motion.div>
+          )}
         </div>
       </section>
 
@@ -196,12 +229,12 @@ const Gallery = () => {
 
             {/* Image */}
             <motion.img
-              key={selectedImage.src}
+              key={selectedImage.url}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              src={selectedImage.src}
-              alt={selectedImage.alt}
+              src={selectedImage.url}
+              alt={getAlt(selectedImage)}
               className="max-h-[85vh] max-w-[90vw] object-contain"
               onClick={(e) => e.stopPropagation()}
             />

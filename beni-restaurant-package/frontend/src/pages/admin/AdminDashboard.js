@@ -3,7 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Menu, X, Home, Calendar, UtensilsCrossed, Settings, LogOut, 
-  Plus, Trash2, Save, Image, Check, XCircle, FileText, BookOpen, Users
+  Plus, Trash2, Save, Image, Check, XCircle, FileText, BookOpen, Users, Images,
+  GripVertical, Edit2, FolderPlus, PartyPopper, Copy, ExternalLink
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -21,6 +22,7 @@ import { fr } from 'date-fns/locale';
 import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const SITE_URL = process.env.REACT_APP_BACKEND_URL?.replace('/api', '') || window.location.origin;
 
 const AdminDashboard = () => {
   const { t } = useLanguage();
@@ -36,10 +38,18 @@ const AdminDashboard = () => {
   const [weeklyMenu, setWeeklyMenu] = useState(null);
   const [reservations, setReservations] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
+  const [menuCategories, setMenuCategories] = useState([]);
   const [siteContent, setSiteContent] = useState(null);
   const [siteSettings, setSiteSettings] = useState(null);
   const [admins, setAdmins] = useState([]);
+  const [galleryImages, setGalleryImages] = useState([]);
+  const [events, setEvents] = useState([]);
   const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '' });
+  const [newCategory, setNewCategory] = useState({ slug: '', name_fr: '', name_en: '', name_pt: '' });
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [showCategoryForm, setShowCategoryForm] = useState(false);
+  const [showEventForm, setShowEventForm] = useState(false);
+  const [newEvent, setNewEvent] = useState({ name: '', num_guests: 10, organizer_name: '', organizer_email: '', organizer_whatsapp: '', organizer_password: '' });
 
   // Menu form state
   const [menuForm, setMenuForm] = useState({
@@ -61,13 +71,16 @@ const AdminDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [menuRes, reservationsRes, menuItemsRes, contentRes, settingsRes, adminsRes] = await Promise.all([
+      const [menuRes, reservationsRes, menuItemsRes, categoriesRes, contentRes, settingsRes, adminsRes, galleryRes, eventsRes] = await Promise.all([
         axios.get(`${API}/weekly-menu`),
         axios.get(`${API}/reservations`),
         axios.get(`${API}/menu-items`),
+        axios.get(`${API}/menu-categories`),
         axios.get(`${API}/content`),
         axios.get(`${API}/settings`),
-        axios.get(`${API}/auth/admins`)
+        axios.get(`${API}/auth/admins`),
+        axios.get(`${API}/gallery`),
+        axios.get(`${API}/events`)
       ]);
       
       if (menuRes.data) {
@@ -81,9 +94,12 @@ const AdminDashboard = () => {
       
       setReservations(reservationsRes.data || []);
       setMenuItems(menuItemsRes.data || []);
+      setMenuCategories(categoriesRes.data || []);
       setSiteContent(contentRes.data || {});
       setSiteSettings(settingsRes.data || {});
       setAdmins(adminsRes.data || []);
+      setGalleryImages(galleryRes.data || []);
+      setEvents(eventsRes.data || []);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -295,9 +311,206 @@ const AdminDashboard = () => {
     }
   };
 
+  // Gallery Functions
+  const addGalleryImage = (category) => {
+    const newImage = {
+      id: `new-${Date.now()}`,
+      url: '',
+      category,
+      alt_fr: '',
+      alt_en: '',
+      alt_pt: '',
+      sort_order: galleryImages.filter(i => i.category === category).length,
+      isNew: true
+    };
+    setGalleryImages(prev => [...prev, newImage]);
+  };
+
+  const updateGalleryImage = (imageId, field, value) => {
+    setGalleryImages(prev => prev.map(img => 
+      img.id === imageId ? { ...img, [field]: value } : img
+    ));
+  };
+
+  const saveGalleryImage = async (image) => {
+    if (!image.url) {
+      toast.error('Veuillez ajouter une image');
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload = {
+        url: image.url,
+        category: image.category,
+        alt_fr: image.alt_fr || '',
+        alt_en: image.alt_en || '',
+        alt_pt: image.alt_pt || '',
+        sort_order: image.sort_order || 0
+      };
+
+      if (image.isNew) {
+        await axios.post(`${API}/gallery`, payload);
+      } else {
+        await axios.put(`${API}/gallery/${image.id}`, payload);
+      }
+      
+      toast.success('Image sauvegardée!');
+      fetchData();
+    } catch (error) {
+      toast.error('Erreur lors de la sauvegarde');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteGalleryImage = async (imageId, isNew) => {
+    if (isNew) {
+      setGalleryImages(prev => prev.filter(i => i.id !== imageId));
+      return;
+    }
+    if (!window.confirm('Supprimer cette image?')) return;
+    try {
+      await axios.delete(`${API}/gallery/${imageId}`);
+      toast.success('Image supprimée');
+      fetchData();
+    } catch (error) {
+      toast.error('Erreur lors de la suppression');
+    }
+  };
+
+  // Menu Categories Functions
+  const createCategory = async () => {
+    if (!newCategory.slug || !newCategory.name_fr) {
+      toast.error('Veuillez remplir le slug et le nom français');
+      return;
+    }
+    setSaving(true);
+    try {
+      await axios.post(`${API}/menu-categories`, {
+        ...newCategory,
+        sort_order: menuCategories.length
+      });
+      toast.success('Catégorie créée!');
+      setNewCategory({ slug: '', name_fr: '', name_en: '', name_pt: '' });
+      setShowCategoryForm(false);
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erreur lors de la création');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateCategory = async (category) => {
+    setSaving(true);
+    try {
+      await axios.put(`${API}/menu-categories/${category.id}`, {
+        slug: category.slug,
+        name_fr: category.name_fr,
+        name_en: category.name_en,
+        name_pt: category.name_pt,
+        sort_order: category.sort_order,
+        is_active: category.is_active
+      });
+      toast.success('Catégorie mise à jour!');
+      setEditingCategory(null);
+      fetchData();
+    } catch (error) {
+      toast.error('Erreur lors de la mise à jour');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteCategory = async (categoryId) => {
+    if (!window.confirm('Supprimer cette catégorie? Les items de cette catégorie doivent être supprimés ou déplacés avant.')) return;
+    try {
+      await axios.delete(`${API}/menu-categories/${categoryId}`);
+      toast.success('Catégorie supprimée');
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erreur lors de la suppression');
+    }
+  };
+
+  const moveCategoryUp = async (index) => {
+    if (index === 0) return;
+    const newCategories = [...menuCategories];
+    [newCategories[index], newCategories[index - 1]] = [newCategories[index - 1], newCategories[index]];
+    const updates = newCategories.map((cat, i) => ({ id: cat.id, sort_order: i }));
+    try {
+      await axios.put(`${API}/menu-categories/reorder`, updates);
+      fetchData();
+    } catch (error) {
+      toast.error('Erreur lors du réordonnancement');
+    }
+  };
+
+  const moveCategoryDown = async (index) => {
+    if (index === menuCategories.length - 1) return;
+    const newCategories = [...menuCategories];
+    [newCategories[index], newCategories[index + 1]] = [newCategories[index + 1], newCategories[index]];
+    const updates = newCategories.map((cat, i) => ({ id: cat.id, sort_order: i }));
+    try {
+      await axios.put(`${API}/menu-categories/reorder`, updates);
+      fetchData();
+    } catch (error) {
+      toast.error('Erreur lors du réordonnancement');
+    }
+  };
+
+  // Event functions
+  const createEvent = async () => {
+    if (!newEvent.name || !newEvent.organizer_name || !newEvent.organizer_email || !newEvent.organizer_password) {
+      toast.error('Veuillez remplir tous les champs obligatoires (incluant le mot de passe)');
+      return;
+    }
+    setSaving(true);
+    try {
+      const response = await axios.post(`${API}/events`, newEvent);
+      toast.success('Événement créé!');
+      
+      // Show password info
+      toast.info(`Mot de passe pour l'organisateur: ${newEvent.organizer_password}`, { duration: 10000 });
+      
+      setNewEvent({ name: '', num_guests: 10, organizer_name: '', organizer_email: '', organizer_whatsapp: '', organizer_password: '' });
+      setShowEventForm(false);
+      fetchData();
+      
+      // Copy link to clipboard
+      const link = `${SITE_URL}/evento/${response.data.link_code}`;
+      navigator.clipboard.writeText(link);
+      toast.success('Lien copié dans le presse-papiers!');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Erreur lors de la création');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteEvent = async (eventId) => {
+    if (!window.confirm('Supprimer cet événement et tous ses pedidos?')) return;
+    try {
+      await axios.delete(`${API}/events/${eventId}`);
+      toast.success('Événement supprimé');
+      fetchData();
+    } catch (error) {
+      toast.error('Erreur lors de la suppression');
+    }
+  };
+
+  const copyEventLink = (linkCode) => {
+    const link = `${SITE_URL}/evento/${linkCode}`;
+    navigator.clipboard.writeText(link);
+    toast.success('Lien copié!');
+  };
+
   const sidebarItems = [
     { id: 'weekly', icon: UtensilsCrossed, label: 'Menu Semaine' },
     { id: 'cardapio', icon: BookOpen, label: 'Cardápio Completo' },
+    { id: 'categories', icon: FolderPlus, label: 'Catégories Menu' },
+    { id: 'events', icon: PartyPopper, label: 'Événements' },
+    { id: 'gallery', icon: Images, label: 'Galerie' },
     { id: 'content', icon: FileText, label: 'Textes du Site' },
     { id: 'images', icon: Image, label: 'Images du Site' },
     { id: 'settings', icon: Settings, label: 'Paramètres' },
@@ -306,18 +519,10 @@ const AdminDashboard = () => {
   ];
 
   const dishCategories = [
-    { id: 'meat', label: 'Viande', max: 1 },
-    { id: 'vegetarian', label: 'Végétarien', max: 1 },
-    { id: 'seafood', label: 'Poisson / Fruits de Mer', max: 1 },
-    { id: 'dessert', label: 'Dessert', max: 2 }
-  ];
-
-  const menuCategories = [
-    { id: 'starters', label: 'Entrées' },
-    { id: 'mains', label: 'Plats Principaux' },
-    { id: 'seafood', label: 'Poissons & Fruits de Mer' },
-    { id: 'desserts', label: 'Desserts' },
-    { id: 'drinks', label: 'Boissons' }
+    { id: 'meat', label: 'Viande' },
+    { id: 'vegetarian', label: 'Végétarien' },
+    { id: 'seafood', label: 'Poisson / Fruits de Mer' },
+    { id: 'dessert', label: 'Dessert' }
   ];
 
   return (
@@ -443,11 +648,9 @@ const AdminDashboard = () => {
                       <div key={category.id} className="bg-[#121212] border border-white/10 p-6">
                         <div className="flex items-center justify-between mb-6">
                           <h3 className="text-white text-lg font-medium">{category.label}</h3>
-                          {categoryDishes.length < category.max && (
-                            <Button variant="outline" size="sm" onClick={() => addDish(category.id)} className="border-[#d4af37] text-[#d4af37] hover:bg-[#d4af37]/10">
-                              <Plus className="w-4 h-4 mr-2" />Ajouter
-                            </Button>
-                          )}
+                          <Button variant="outline" size="sm" onClick={() => addDish(category.id)} className="border-[#d4af37] text-[#d4af37] hover:bg-[#d4af37]/10">
+                            <Plus className="w-4 h-4 mr-2" />Ajouter
+                          </Button>
                         </div>
                         {categoryDishes.length === 0 ? (
                           <p className="text-white/30 text-sm">Aucun plat ajouté</p>
@@ -485,59 +688,370 @@ const AdminDashboard = () => {
               {/* Cardápio Completo Tab */}
               {activeTab === 'cardapio' && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-                  <Tabs defaultValue="starters" className="w-full">
-                    <TabsList className="bg-[#121212] border border-white/10 p-1 mb-6">
-                      {menuCategories.map(cat => (
-                        <TabsTrigger key={cat.id} value={cat.id} className="data-[state=active]:bg-[#d4af37] data-[state=active]:text-black">
-                          {cat.label}
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
+                  {menuCategories.length === 0 ? (
+                    <p className="text-white/50 text-center py-8">Nenhuma categoria criada. Vá para "Catégories Menu" para criar.</p>
+                  ) : (
+                    <Tabs defaultValue={menuCategories[0]?.slug} className="w-full">
+                      <TabsList className="bg-[#121212] border border-white/10 p-1 mb-6 flex-wrap">
+                        {menuCategories.map(cat => (
+                          <TabsTrigger key={cat.id} value={cat.slug} className="data-[state=active]:bg-[#d4af37] data-[state=active]:text-black">
+                            {cat.name_fr}
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
 
-                    {menuCategories.map(category => (
-                      <TabsContent key={category.id} value={category.id} className="space-y-4">
-                        <div className="flex justify-between items-center mb-4">
-                          <h3 className="text-white text-lg">{category.label}</h3>
-                          <Button onClick={() => addMenuItem(category.id)} className="bg-[#d4af37] text-black hover:bg-white">
-                            <Plus className="w-4 h-4 mr-2" />Ajouter
-                          </Button>
-                        </div>
+                      {menuCategories.map(category => (
+                        <TabsContent key={category.id} value={category.slug} className="space-y-4">
+                          <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-white text-lg">{category.name_fr}</h3>
+                            <Button onClick={() => addMenuItem(category.slug)} className="bg-[#d4af37] text-black hover:bg-white">
+                              <Plus className="w-4 h-4 mr-2" />Ajouter
+                            </Button>
+                          </div>
 
-                        {menuItems.filter(item => item.category === category.id).map(item => (
-                          <div key={item.id} className="bg-[#121212] border border-white/10 p-6 space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                              <Input value={item.name_fr} onChange={(e) => updateMenuItem(item.id, 'name_fr', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Nom (FR)" />
-                              <Input value={item.name_en} onChange={(e) => updateMenuItem(item.id, 'name_en', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Name (EN)" />
-                              <Input value={item.name_pt} onChange={(e) => updateMenuItem(item.id, 'name_pt', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Nome (PT)" />
-                              <Input type="number" step="0.01" value={item.price} onChange={(e) => updateMenuItem(item.id, 'price', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Prix (€)" />
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <Input value={item.description_fr || ''} onChange={(e) => updateMenuItem(item.id, 'description_fr', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Description (FR)" />
-                              <Input value={item.description_en || ''} onChange={(e) => updateMenuItem(item.id, 'description_en', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Description (EN)" />
-                              <Input value={item.description_pt || ''} onChange={(e) => updateMenuItem(item.id, 'description_pt', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Descrição (PT)" />
-                            </div>
-                            <div className="flex gap-4">
-                              <div className="flex-1">
-                                <ImageUpload value={item.image_url || ''} onChange={(url) => updateMenuItem(item.id, 'image_url', url)} />
+                          {menuItems.filter(item => item.category === category.slug).map(item => (
+                            <div key={item.id} className="bg-[#121212] border border-white/10 p-6 space-y-4">
+                              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <Input value={item.name_fr} onChange={(e) => updateMenuItem(item.id, 'name_fr', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Nom (FR)" />
+                                <Input value={item.name_en} onChange={(e) => updateMenuItem(item.id, 'name_en', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Name (EN)" />
+                                <Input value={item.name_pt} onChange={(e) => updateMenuItem(item.id, 'name_pt', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Nome (PT)" />
+                                <Input type="number" step="0.01" value={item.price} onChange={(e) => updateMenuItem(item.id, 'price', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Prix (€)" />
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <Input value={item.description_fr || ''} onChange={(e) => updateMenuItem(item.id, 'description_fr', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Description (FR)" />
+                                <Input value={item.description_en || ''} onChange={(e) => updateMenuItem(item.id, 'description_en', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Description (EN)" />
+                                <Input value={item.description_pt || ''} onChange={(e) => updateMenuItem(item.id, 'description_pt', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Descrição (PT)" />
+                              </div>
+                              <div className="flex gap-4">
+                                <div className="flex-1">
+                                  <ImageUpload value={item.image_url || ''} onChange={(url) => updateMenuItem(item.id, 'image_url', url)} />
+                                </div>
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <Button variant="outline" onClick={() => deleteMenuItem(item.id, item.isNew)} className="border-red-500 text-red-500 hover:bg-red-500/10">
+                                  <Trash2 className="w-4 h-4 mr-2" />Supprimer
+                                </Button>
+                                <Button onClick={() => saveMenuItem(item)} disabled={saving} className="bg-[#d4af37] text-black hover:bg-white">
+                                  <Save className="w-4 h-4 mr-2" />Sauvegarder
+                                </Button>
                               </div>
                             </div>
-                            <div className="flex justify-end gap-2">
-                              <Button variant="outline" onClick={() => deleteMenuItem(item.id, item.isNew)} className="border-red-500 text-red-500 hover:bg-red-500/10">
-                                <Trash2 className="w-4 h-4 mr-2" />Supprimer
-                              </Button>
-                              <Button onClick={() => saveMenuItem(item)} disabled={saving} className="bg-[#d4af37] text-black hover:bg-white">
-                                <Save className="w-4 h-4 mr-2" />Sauvegarder
-                              </Button>
+                          ))}
+
+                          {menuItems.filter(item => item.category === category.slug).length === 0 && (
+                            <p className="text-white/30 text-center py-8">Aucun item dans cette catégorie</p>
+                          )}
+                        </TabsContent>
+                      ))}
+                    </Tabs>
+                  )}
+                </motion.div>
+              )}
+
+              {/* Categories Management Tab */}
+              {activeTab === 'categories' && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+                  {/* Add Category Form */}
+                  <div className="bg-[#121212] border border-white/10 p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-white text-lg font-medium">Catégories du Menu</h2>
+                      <Button onClick={() => setShowCategoryForm(!showCategoryForm)} className="bg-[#d4af37] text-black hover:bg-white">
+                        <Plus className="w-4 h-4 mr-2" />Nouvelle Catégorie
+                      </Button>
+                    </div>
+
+                    {showCategoryForm && (
+                      <div className="bg-white/5 p-4 space-y-4 mt-4">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs text-white/70">Slug (identifiant unique)</Label>
+                            <Input 
+                              value={newCategory.slug} 
+                              onChange={(e) => setNewCategory({...newCategory, slug: e.target.value.toLowerCase().replace(/\s+/g, '-')})} 
+                              className="bg-transparent border-white/20 text-white" 
+                              placeholder="ex: viandes" 
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-white/70">Nom (FR)</Label>
+                            <Input 
+                              value={newCategory.name_fr} 
+                              onChange={(e) => setNewCategory({...newCategory, name_fr: e.target.value})} 
+                              className="bg-transparent border-white/20 text-white" 
+                              placeholder="Viandes" 
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-white/70">Name (EN)</Label>
+                            <Input 
+                              value={newCategory.name_en} 
+                              onChange={(e) => setNewCategory({...newCategory, name_en: e.target.value})} 
+                              className="bg-transparent border-white/20 text-white" 
+                              placeholder="Meats" 
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-white/70">Nome (PT)</Label>
+                            <Input 
+                              value={newCategory.name_pt} 
+                              onChange={(e) => setNewCategory({...newCategory, name_pt: e.target.value})} 
+                              className="bg-transparent border-white/20 text-white" 
+                              placeholder="Carnes" 
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button variant="outline" onClick={() => setShowCategoryForm(false)} className="border-white/20 text-white/70">
+                            Annuler
+                          </Button>
+                          <Button onClick={createCategory} disabled={saving} className="bg-[#d4af37] text-black hover:bg-white">
+                            <Save className="w-4 h-4 mr-2" />Créer
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Categories List */}
+                  <div className="bg-[#121212] border border-white/10 p-6">
+                    <h3 className="text-white text-lg font-medium mb-4">Ordre des Catégories (drag pour réordonner)</h3>
+                    <div className="space-y-2">
+                      {menuCategories.map((category, index) => (
+                        <div key={category.id} className="bg-white/5 border border-white/10 p-4 flex items-center gap-4">
+                          <div className="flex flex-col gap-1">
+                            <button 
+                              onClick={() => moveCategoryUp(index)} 
+                              disabled={index === 0}
+                              className="text-white/50 hover:text-white disabled:opacity-30"
+                            >
+                              ▲
+                            </button>
+                            <button 
+                              onClick={() => moveCategoryDown(index)} 
+                              disabled={index === menuCategories.length - 1}
+                              className="text-white/50 hover:text-white disabled:opacity-30"
+                            >
+                              ▼
+                            </button>
+                          </div>
+                          
+                          {editingCategory?.id === category.id ? (
+                            <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-2">
+                              <Input 
+                                value={editingCategory.name_fr} 
+                                onChange={(e) => setEditingCategory({...editingCategory, name_fr: e.target.value})} 
+                                className="bg-transparent border-white/20 text-white text-sm" 
+                                placeholder="Nom (FR)" 
+                              />
+                              <Input 
+                                value={editingCategory.name_en} 
+                                onChange={(e) => setEditingCategory({...editingCategory, name_en: e.target.value})} 
+                                className="bg-transparent border-white/20 text-white text-sm" 
+                                placeholder="Name (EN)" 
+                              />
+                              <Input 
+                                value={editingCategory.name_pt} 
+                                onChange={(e) => setEditingCategory({...editingCategory, name_pt: e.target.value})} 
+                                className="bg-transparent border-white/20 text-white text-sm" 
+                                placeholder="Nome (PT)" 
+                              />
+                              <div className="flex gap-2">
+                                <Button size="sm" onClick={() => updateCategory(editingCategory)} className="bg-[#d4af37] text-black">
+                                  <Save className="w-4 h-4" />
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => setEditingCategory(null)} className="border-white/20 text-white/70">
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex-1">
+                                <p className="text-white font-medium">{category.name_fr}</p>
+                                <p className="text-white/50 text-sm">EN: {category.name_en} | PT: {category.name_pt}</p>
+                                <p className="text-white/30 text-xs">slug: {category.slug}</p>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button size="sm" variant="outline" onClick={() => setEditingCategory({...category})} className="border-[#d4af37] text-[#d4af37]">
+                                  <Edit2 className="w-4 h-4" />
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => deleteCategory(category.id)} className="border-red-500 text-red-500">
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {menuCategories.length === 0 && (
+                      <p className="text-white/30 text-center py-8">Aucune catégorie créée</p>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Events Tab */}
+              {activeTab === 'events' && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+                  {/* Create Event Form */}
+                  <div className="bg-[#121212] border border-white/10 p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-white text-lg font-medium">Événements (Reserva de Pratos em Grupo)</h2>
+                      <Button onClick={() => setShowEventForm(!showEventForm)} className="bg-[#d4af37] text-black hover:bg-white">
+                        <Plus className="w-4 h-4 mr-2" />Nouvel Événement
+                      </Button>
+                    </div>
+
+                    {showEventForm && (
+                      <div className="bg-white/5 p-6 space-y-4 mt-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs text-white/70">Nom de l'événement *</Label>
+                            <Input 
+                              value={newEvent.name} 
+                              onChange={(e) => setNewEvent({...newEvent, name: e.target.value})} 
+                              className="bg-transparent border-white/20 text-white" 
+                              placeholder="Ex: Anniversaire Juliana" 
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-white/70">Nombre de convives</Label>
+                            <Input 
+                              type="number"
+                              value={newEvent.num_guests} 
+                              onChange={(e) => setNewEvent({...newEvent, num_guests: parseInt(e.target.value) || 10})} 
+                              className="bg-transparent border-white/20 text-white" 
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs text-white/70">Nom de l'organisateur *</Label>
+                            <Input 
+                              value={newEvent.organizer_name} 
+                              onChange={(e) => setNewEvent({...newEvent, organizer_name: e.target.value})} 
+                              className="bg-transparent border-white/20 text-white" 
+                              placeholder="Juliana Silva" 
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-white/70">Email de l'organisateur *</Label>
+                            <Input 
+                              type="email"
+                              value={newEvent.organizer_email} 
+                              onChange={(e) => setNewEvent({...newEvent, organizer_email: e.target.value})} 
+                              className="bg-transparent border-white/20 text-white" 
+                              placeholder="juliana@email.com" 
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-white/70">WhatsApp (optionnel)</Label>
+                            <Input 
+                              value={newEvent.organizer_whatsapp} 
+                              onChange={(e) => setNewEvent({...newEvent, organizer_whatsapp: e.target.value})} 
+                              className="bg-transparent border-white/20 text-white" 
+                              placeholder="+352 123 456 789" 
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs text-white/70">Mot de passe pour l'organisateur *</Label>
+                            <Input 
+                              type="text"
+                              value={newEvent.organizer_password} 
+                              onChange={(e) => setNewEvent({...newEvent, organizer_password: e.target.value})} 
+                              className="bg-transparent border-white/20 text-white" 
+                              placeholder="Créer un mot de passe" 
+                            />
+                            <p className="text-white/40 text-xs">Ce mot de passe sera donné à l'organisateur pour voir et gérer les commandes</p>
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-2 pt-4">
+                          <Button variant="outline" onClick={() => setShowEventForm(false)} className="border-white/20 text-white/70">
+                            Annuler
+                          </Button>
+                          <Button onClick={createEvent} disabled={saving} className="bg-[#d4af37] text-black hover:bg-white">
+                            <Save className="w-4 h-4 mr-2" />Créer et Copier le Lien
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Events List */}
+                  <div className="bg-[#121212] border border-white/10 p-6">
+                    <h3 className="text-white text-lg font-medium mb-4">Événements Actifs</h3>
+                    
+                    {events.length === 0 ? (
+                      <p className="text-white/30 text-center py-8">Aucun événement créé</p>
+                    ) : (
+                      <div className="space-y-4">
+                        {events.map(event => (
+                          <div key={event.id} className="bg-white/5 border border-white/10 p-4 space-y-3">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <h4 className="text-white font-medium text-lg">{event.name}</h4>
+                                <p className="text-white/50 text-sm">
+                                  Organisateur: {event.organizer_name} ({event.organizer_email})
+                                </p>
+                                <p className="text-white/50 text-sm">
+                                  Convives attendus: {event.num_guests}
+                                </p>
+                                {event.organizer_password && (
+                                  <p className="text-[#d4af37] text-sm">
+                                    🔑 Mot de passe: <code className="bg-black/30 px-2 py-0.5 rounded">{event.organizer_password}</code>
+                                  </p>
+                                )}
+                                <div className={`inline-block mt-2 px-2 py-1 text-xs rounded ${
+                                  event.status === 'sent' ? 'bg-green-500/20 text-green-400' : 
+                                  event.status === 'closed' ? 'bg-yellow-500/20 text-yellow-400' : 
+                                  'bg-blue-500/20 text-blue-400'
+                                }`}>
+                                  {event.status === 'sent' ? '✓ Envoyé' : 
+                                   event.status === 'closed' ? 'Fermé' : 
+                                   'Ouvert'}
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  onClick={() => copyEventLink(event.link_code)}
+                                  className="border-[#d4af37] text-[#d4af37]"
+                                >
+                                  <Copy className="w-4 h-4 mr-1" />Copier Lien
+                                </Button>
+                                <a 
+                                  href={`/evento/${event.link_code}`} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                >
+                                  <Button size="sm" variant="outline" className="border-white/20 text-white/70">
+                                    <ExternalLink className="w-4 h-4" />
+                                  </Button>
+                                </a>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  onClick={() => deleteEvent(event.id)}
+                                  className="border-red-500 text-red-500"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="bg-black/30 p-2 rounded flex items-center gap-2">
+                              <code className="text-[#d4af37] text-sm flex-1 truncate">
+                                {SITE_URL}/evento/{event.link_code}
+                              </code>
                             </div>
                           </div>
                         ))}
-
-                        {menuItems.filter(item => item.category === category.id).length === 0 && (
-                          <p className="text-white/30 text-center py-8">Aucun item dans cette catégorie</p>
-                        )}
-                      </TabsContent>
-                    ))}
-                  </Tabs>
+                      </div>
+                    )}
+                  </div>
                 </motion.div>
               )}
 
@@ -654,6 +1168,33 @@ const AdminDashboard = () => {
                   <div className="bg-[#121212] border border-white/10 p-6 space-y-6">
                     <h2 className="text-white text-lg font-medium border-b border-white/10 pb-4">Image Fond Réservations</h2>
                     <ImageUpload value={siteContent.reservation_bg_image || ''} onChange={(url) => setSiteContent({...siteContent, reservation_bg_image: url})} />
+                  </div>
+
+                  <div className="bg-[#121212] border border-white/10 p-6 space-y-6">
+                    <h2 className="text-white text-lg font-medium border-b border-white/10 pb-4">Images de Fond des Pages</h2>
+                    <p className="text-white/50 text-sm mb-4">Optionnel - Si aucune image n'est définie, la page gardera son style par défaut</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      <div>
+                        <Label className="text-xs text-white/70 mb-2 block">Accueil (Home)</Label>
+                        <ImageUpload value={siteContent.bg_home || ''} onChange={(url) => setSiteContent({...siteContent, bg_home: url})} />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-white/70 mb-2 block">Notre Histoire (About)</Label>
+                        <ImageUpload value={siteContent.bg_about || ''} onChange={(url) => setSiteContent({...siteContent, bg_about: url})} />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-white/70 mb-2 block">Menu (Carte)</Label>
+                        <ImageUpload value={siteContent.bg_menu || ''} onChange={(url) => setSiteContent({...siteContent, bg_menu: url})} />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-white/70 mb-2 block">Galerie</Label>
+                        <ImageUpload value={siteContent.bg_gallery || ''} onChange={(url) => setSiteContent({...siteContent, bg_gallery: url})} />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-white/70 mb-2 block">Réservations</Label>
+                        <ImageUpload value={siteContent.bg_reservations || ''} onChange={(url) => setSiteContent({...siteContent, bg_reservations: url})} />
+                      </div>
+                    </div>
                   </div>
 
                   <div className="flex justify-end">
@@ -774,6 +1315,70 @@ const AdminDashboard = () => {
                       </div>
                     ))
                   )}
+                </motion.div>
+              )}
+
+              {/* Gallery Tab */}
+              {activeTab === 'gallery' && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+                  <Tabs defaultValue="ambiance" className="w-full">
+                    <TabsList className="bg-[#121212] border border-white/10 p-1 mb-6">
+                      <TabsTrigger value="ambiance" className="data-[state=active]:bg-[#d4af37] data-[state=active]:text-black">Ambiance</TabsTrigger>
+                      <TabsTrigger value="dishes" className="data-[state=active]:bg-[#d4af37] data-[state=active]:text-black">Plats</TabsTrigger>
+                      <TabsTrigger value="team" className="data-[state=active]:bg-[#d4af37] data-[state=active]:text-black">Équipe</TabsTrigger>
+                    </TabsList>
+
+                    {['ambiance', 'dishes', 'team'].map(category => (
+                      <TabsContent key={category} value={category} className="space-y-4">
+                        <div className="flex justify-between items-center mb-4">
+                          <h3 className="text-white text-lg capitalize">{category === 'ambiance' ? 'Ambiance' : category === 'dishes' ? 'Plats' : 'Équipe'}</h3>
+                          <Button onClick={() => addGalleryImage(category)} className="bg-[#d4af37] text-black hover:bg-white">
+                            <Plus className="w-4 h-4 mr-2" />Ajouter
+                          </Button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {galleryImages.filter(img => img.category === category).map(image => (
+                            <div key={image.id} className="bg-[#121212] border border-white/10 p-4 space-y-4" data-testid={`gallery-item-${image.id}`}>
+                              <ImageUpload value={image.url || ''} onChange={(url) => updateGalleryImage(image.id, 'url', url)} />
+                              <div className="grid grid-cols-3 gap-2">
+                                <Input 
+                                  value={image.alt_fr || ''} 
+                                  onChange={(e) => updateGalleryImage(image.id, 'alt_fr', e.target.value)} 
+                                  className="bg-transparent border-white/20 text-white text-xs" 
+                                  placeholder="Alt (FR)" 
+                                />
+                                <Input 
+                                  value={image.alt_en || ''} 
+                                  onChange={(e) => updateGalleryImage(image.id, 'alt_en', e.target.value)} 
+                                  className="bg-transparent border-white/20 text-white text-xs" 
+                                  placeholder="Alt (EN)" 
+                                />
+                                <Input 
+                                  value={image.alt_pt || ''} 
+                                  onChange={(e) => updateGalleryImage(image.id, 'alt_pt', e.target.value)} 
+                                  className="bg-transparent border-white/20 text-white text-xs" 
+                                  placeholder="Alt (PT)" 
+                                />
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <Button variant="outline" size="sm" onClick={() => deleteGalleryImage(image.id, image.isNew)} className="border-red-500 text-red-500 hover:bg-red-500/10">
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                                <Button size="sm" onClick={() => saveGalleryImage(image)} disabled={saving} className="bg-[#d4af37] text-black hover:bg-white">
+                                  <Save className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {galleryImages.filter(img => img.category === category).length === 0 && (
+                          <p className="text-white/30 text-center py-8">Aucune image dans cette catégorie</p>
+                        )}
+                      </TabsContent>
+                    ))}
+                  </Tabs>
                 </motion.div>
               )}
 

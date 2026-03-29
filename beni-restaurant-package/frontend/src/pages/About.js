@@ -1,11 +1,47 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Quote } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
+import axios from 'axios';
+
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const About = () => {
   const { t, language } = useLanguage();
+  const [siteContent, setSiteContent] = useState(null);
+  const [galleryImages, setGalleryImages] = useState([]);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const [contentRes, galleryRes] = await Promise.all([
+        axios.get(`${API}/content`),
+        axios.get(`${API}/gallery`)
+      ]);
+      setSiteContent(contentRes.data);
+      // Get 4 dish images for the grid
+      const dishes = galleryRes.data?.filter(img => img.category === 'dishes').slice(0, 4) || [];
+      setGalleryImages(dishes);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  };
+
+  // Default images as fallback
+  const heroImage = siteContent?.about_image_2 || 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1920&q=80';
+  const historyImage = siteContent?.hero_image || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80';
+  const chefImage = siteContent?.chef_image || 'https://images.unsplash.com/photo-1600565193348-f74bd3c7ccdf?w=800&q=80';
+  
+  const defaultGalleryImages = [
+    'https://images.unsplash.com/photo-1544025162-d76694265947?w=400&q=80',
+    'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=400&q=80',
+    'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80',
+    'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=400&q=80'
+  ];
 
   const content = {
     fr: {
@@ -66,7 +102,7 @@ const About = () => {
       <section className="relative py-24 md:py-32 px-6 md:px-12">
         <div className="absolute inset-0 overflow-hidden">
           <img
-            src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=1920&q=80"
+            src={heroImage}
             alt="BÉNI Restaurant"
             className="w-full h-full object-cover opacity-30"
           />
@@ -122,9 +158,9 @@ const About = () => {
               className="relative"
             >
               <img
-                src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80"
+                src={historyImage}
                 alt="BÉNI Interior"
-                className="w-full h-[400px] object-cover"
+                className="w-full h-auto max-h-[500px] object-contain"
                 data-testid="history-image"
               />
               <div className="absolute -bottom-6 -left-6 w-32 h-32 border-2 border-[#d4af37]" />
@@ -145,9 +181,9 @@ const About = () => {
               className="order-2 lg:order-1"
             >
               <img
-                src="https://images.unsplash.com/photo-1600565193348-f74bd3c7ccdf?w=800&q=80"
+                src={chefImage}
                 alt="Chef Stephano Crupi"
-                className="w-full h-[500px] object-cover"
+                className="w-full h-auto max-h-[600px] object-contain"
                 data-testid="chef-image"
               />
             </motion.div>
@@ -213,12 +249,7 @@ const About = () => {
       <section className="py-20 px-6 md:px-12 bg-[#121212]">
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              'https://images.unsplash.com/photo-1544025162-d76694265947?w=400&q=80',
-              'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=400&q=80',
-              'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=80',
-              'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=400&q=80'
-            ].map((src, index) => (
+            {(galleryImages.length > 0 ? galleryImages.map(img => img.url) : defaultGalleryImages).map((src, index) => (
               <motion.div
                 key={index}
                 initial={{ opacity: 0, scale: 0.9 }}
