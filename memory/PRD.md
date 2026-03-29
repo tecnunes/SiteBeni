@@ -12,92 +12,69 @@ Site para Restaurante BÉNI com conteúdo de https://www.restaurantbeni.com/ mas
 - Páginas: About, Cardápio completo, Galeria de fotos
 - Categorias do cardápio dinâmicas (criar, editar, excluir, reordenar)
 - Imagens de fundo personalizáveis por página
+- Sistema de Reservas de Grupo para Eventos (página oculta via link)
 
 ## Architecture
-- **Frontend**: React 19 + Tailwind CSS + Shadcn UI + Framer Motion
-- **Backend**: FastAPI + MongoDB (Motor async driver)
+- **Frontend**: React 19 + Tailwind CSS + Shadcn UI + Framer Motion + jsPDF
+- **Backend**: FastAPI + MongoDB (Motor async driver) + bcrypt
 - **Auth**: JWT with bcrypt password hashing
 - **Design**: Dark luxury theme (#0a0a0a bg, #d4af37 gold accents)
 - **Fonts**: Playfair Display (headings), Manrope (body), Cormorant Garamond (accent)
+- **Deployment**: ZIP packages with bash scripts for Ubuntu server
 
-## User Personas
-1. **Restaurant Guest**: Browse menu, make reservations, view gallery
-2. **Admin**: Manage weekly menu, view/manage reservations, update site content
-
-## Core Requirements (Static)
-- Multi-language support (FR/EN/PT)
-- Elegant dark theme matching restaurantazur.lu aesthetic
-- Mobile responsive design
-- Weekly menu management system
-- Reservation system with calendar
-
-## What's Been Implemented (March 2026)
+## What's Been Implemented
 
 ### Pages
 - [x] Home - Hero, About teaser, Reservation CTA (with optional page background)
-- [x] About (Notre Histoire) - History, Chef info, Philosophy - **Images not cropped**
+- [x] About (Notre Histoire) - History, Chef info, Philosophy
 - [x] Menu (Carte) - Full restaurant menu with dynamic categories + Weekly Menu section
 - [x] Gallery (Galerie) - Photo gallery with filters (dynamic from API)
 - [x] Reservations - Calendar date picker, time slots, guest count
-- [x] Admin Login - JWT authentication with bcrypt (single default admin)
+- [x] Admin Login - JWT authentication with bcrypt
 - [x] Admin Dashboard - Complete management system
+- [x] Event Page (/evento/:linkCode) - Group event reservations **IN FRENCH**
 
 ### Backend API
 - [x] Auth: /api/auth/register, /api/auth/login, /api/auth/me, /api/auth/admins
 - [x] Weekly Menu: /api/weekly-menu (GET active), CRUD
-- [x] Menu Items: /api/menu-items (CRUD for full restaurant menu)
-- [x] **Menu Categories: /api/menu-categories (CRUD + reorder)**
+- [x] Menu Items: /api/menu-items (CRUD)
+- [x] Menu Categories: /api/menu-categories (CRUD + reorder)
 - [x] Reservations: /api/reservations (POST public, GET admin), status update, delete
 - [x] Settings: /api/settings (GET/PUT)
-- [x] Content: /api/content (GET/PUT for site texts, images, and page backgrounds)
+- [x] Content: /api/content (GET/PUT)
 - [x] Gallery: /api/gallery (GET/POST), /api/gallery/{id} (PUT/DELETE)
-- [x] Upload: /api/upload (POST for image uploads)
+- [x] Upload: /api/upload (POST)
+- [x] Events: /api/events (CRUD), /api/events/{link_code}/orders, /api/events/{link_code}/send
 
 ### Features Implemented
-- [x] Language switcher (FR/EN/PT) in navbar
+- [x] Language switcher (FR/EN/PT)
 - [x] Responsive mobile navigation
-- [x] **Scroll to top on page navigation**
-- [x] Gallery lightbox with prev/next navigation
+- [x] Scroll to top on page navigation
+- [x] Gallery lightbox
 - [x] Calendar-based reservation system
-- [x] **Admin menu editor - NO LIMIT on dishes per category**
-- [x] **Admin dynamic menu categories - CRUD with drag & drop reorder**
-- [x] Admin full menu (Cardápio) management with image upload
-- [x] Admin gallery management - Add/edit/delete images by category
-- [x] Admin site content editor (texts + images)
-- [x] **Admin page background images - Optional per page**
-- [x] Admin user management (create/delete admins)
-- [x] Image upload functionality with drag & drop
-- [x] Reservation status management (pending/confirmed/cancelled)
+- [x] Admin menu editor - unlimited dishes per category
+- [x] Admin dynamic menu categories - CRUD with drag & drop reorder
+- [x] Admin gallery management
+- [x] Admin site content editor (texts + images + page backgrounds)
+- [x] Admin user management
+- [x] Image upload with drag & drop
+- [x] Group Event Reservations (admin creates, guests order, organizer manages, PDFs generated)
+- [x] **Event Page & PDFs translated to French** (March 29, 2026)
+- [x] **Deployment ZIPs updated** (beni-restaurant.zip + event_update.zip) (March 29, 2026)
 
 ## Prioritized Backlog
 
-### P0 (Critical) - DONE ✅
-- ✅ Core pages and navigation
-- ✅ Weekly menu system (unlimited dishes)
-- ✅ Dynamic menu categories (CRUD + reorder)
-- ✅ Reservation system
-- ✅ Admin authentication (single default admin)
-- ✅ Multi-language support
-- ✅ Full menu (Cardápio) CRUD in admin
-- ✅ Site content editor (texts + images + page backgrounds)
-- ✅ Gallery management in admin
-- ✅ Image upload system for admin
-- ✅ User management in admin
-- ✅ Deployment package (beni-restaurant.zip)
-- ✅ Scroll to top on navigation
-- ✅ Images not cropped in About page
-
 ### P1 (High Priority) - NEXT
-- [ ] Complete Reservation System with full calendar view
-- [ ] Email notifications for reservations (integrate Resend/SendGrid)
-- [ ] WhatsApp integration for reservations
+- [ ] Integração de email (Resend/SendGrid) para enviar PDFs automaticamente
+- [ ] Integração WhatsApp para notificações de reservas
+- [ ] Sistema completo de reservas com calendário visual
 
-### P2 (Medium Priority) - DEFERRED
-- [ ] Custom sections on Home page (admin editable)
-- [ ] Reservation confirmation emails
+### P2 (Medium Priority)
+- [ ] Secções customizáveis na Home
+- [ ] Email de confirmação de reservas
 - [ ] Newsletter subscription
 - [ ] Google Maps integration
-- [ ] SEO optimization (meta tags, sitemap)
+- [ ] SEO (meta tags, sitemap)
 
 ### P3 (Nice to Have)
 - [ ] PDF menu download
@@ -105,11 +82,16 @@ Site para Restaurante BÉNI com conteúdo de https://www.restaurantbeni.com/ mas
 - [ ] Customer reviews section
 - [ ] Online payment for reservations
 
-## Next Tasks
-1. Sistema completo de reservas com calendário visual
-2. Integração de email para notificações de reservas
-3. Integração WhatsApp para reservas
+## Refactoring Needed
+- `server.py` (~1000 lines) → Split into `/app/backend/routes/` modules
+- `AdminDashboard.js` (~1400 lines) → Split into separate tab components
 
 ## Admin Credentials
-- **Username:** admin
+- **Email:** admin
 - **Password:** #Sti93qn06301616
+
+## Deployment Files
+- `/app/beni-restaurant.zip` - Full package for fresh Ubuntu installation
+- `/app/event_update.zip` - Update package for event feature only
+- `/app/install.sh` - Main installation script
+- `/app/populate_menu.sh` - Database seed script
