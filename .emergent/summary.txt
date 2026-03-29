@@ -1,0 +1,146 @@
+<analysis>**original_problem_statement:**
+The user wants a full-stack website for a restaurant named BÉNI. 
+Product Requirements:
+- Multi-language support (French as default, English, Portuguese).
+- Admin dashboard to manage weekly menus, full menu, site texts, image galleries, and users.
+- An event group reservation feature where an admin creates an event, guests choose their dishes via a link, and the organizer can view the total list and generate PDFs for the kitchen and themselves.
+- Provide a deployable ZIP file with installation bash scripts for an Ubuntu server.
+
+**User's preferred language**: Portuguese (INSTRUCT NEXT AGENT TO RESPOND IN PORTUGUESE ONLY)
+
+**what currently exists?** 
+A fully functional React frontend and FastAPI/MongoDB backend. Features include an admin panel with JWT auth, dynamic gallery management, full CRUD for dynamic menu categories, global site background image management, and a newly built Group Event Reservation system. Automated setup scripts (, , ) have been created to allow the user to deploy the app easily on an Ubuntu server.
+
+**Last working item**:
+- **Last item agent was working**: Translating the Event Page () and its generated PDFs into French, as explicitly requested by the user. The agent just overwrote the file but did not verify the PDF generation, nor did they update the ZIP deployment packages.
+- **Status**: IN PROGRESS
+- **Agent Testing Done**: N
+- **Which testing method agent to use?**: manual testing / screenshot tool / testing_agent (to ensure PDF generation logic doesn't break due to string changes).
+- **User Testing Done**: N
+
+**All Pending/In progress Issue list**:
+- **Issue 1: Verify French Translation & PDF Generation (P0)**
+  - **Attempted fixes**: The agent updated  to translate the UI and  content to French, but stopped before testing.
+  - **Next debug checklist**: 
+    1. Render the  page and verify the UI is in French. 
+    2. Simulate an organizer logging in and generating the PDFs to ensure  handles the French text properly without throwing errors.
+  - **Why fix this issue and what will be achieved with the fix?**: User specifically requested the events page and output PDFs to be strictly in French.
+  - **Status**: TESTING PENDING
+  - **Is recurring issue?**: N
+  - **Should Test frontend/backend/both after fix?**: Frontend (specifically the PDF download logic).
+  - **Blocked on other issue**: None.
+
+- **Issue 2: Update Deployment ZIP packages (P0)**
+  - **Attempted fixes**: None yet since the last file edit.
+  - **Next debug checklist**: Run bash commands to update  and  with the newly modified .
+  - **Why fix this issue and what will be achieved with the fix?**: The user relies on these ZIP files to deploy the application to their Ubuntu VM.
+  - **Status**: NOT STARTED
+  - **Is recurring issue?**: N
+  - **Should Test frontend/backend/both after fix?**: NA
+  - **Blocked on other issue**: Blocked until Issue 1 is verified.
+
+**In progress Task List**:
+*None explicitly in progress other than the P0 issues mentioned above.*
+
+**Upcoming and Future Tasks**
+- **Task 1: Email Notification Integration (P1)**
+  - File/Method: Backend reservation/event endpoints.
+  - Description: Integrate Resend (or similar) to send automated emails with the generated PDFs to the restaurant and event organizer upon order completion.
+- **Task 2: WhatsApp Notification Integration (P1)**
+  - File/Method: Backend reservation/event endpoints.
+  - Description: Send WhatsApp notifications for reservations/events.
+- **Task 3: Full Reservation System with Calendar (P2)**
+  - File/Method:  & Backend reservation routes.
+  - Description: Upgrade the mocked reservation page to a fully functional calendar-based booking system.
+
+**Completed work in this session**
+- Gallery management frontend UI completed and integrated with backend (DONE).
+- Dynamic site-wide images (Home, About) fetching from database instead of hardcoded (DONE).
+- Fixed image cropping bug () and scroll-to-top routing bug (DONE).
+- Full CRUD for Menu Categories with drag-and-drop ordering (DONE).
+- Added global page background image manager in Admin (DONE).
+- Created  to seed database with real restaurant data (DONE).
+- Created  for automated Ubuntu VM deployment (DONE).
+- Built Group Event Reservations (Admin creates event with password -> guests pick food -> organizer manages orders -> outputs Summary/Kitchen PDFs using ) (DONE).
+
+**Earlier issues found/mentioned but not fixed**
+- None.
+
+**Known issue recurrence from previous fork**
+- None.
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+- **Frontend**: React, Tailwind CSS, , ,  (for client-side PDF generation).
+- **Backend**: FastAPI, MongoDB (Motor), Pydantic models, JWT authentication,  for event passwords.
+- **Architecture**: Decoupled Monolith with Bash script-based deployment automation.
+
+**key DB schema**
+- : 
+- : 
+- : 
+- : 
+- :  (Includes page backgrounds)
+
+**changes in tech stack**
+- Added  to frontend  for PDF generation.
+- Added  to backend for securing event organizer access.
+
+**All files of reference**
+- : Just updated to translate UI and PDFs to French. Needs testing.
+- : Updated to handle event creation, category management, and background images.
+- : Updated with event routes and menu category CRUD.
+-  & : Deployment packages (Need to be updated with recent changes).
+
+**Areas that need refactoring**:
+-  is getting very large (~1000 lines). API routes should be split into an  directory (e.g., , , ).
+-  is over 1400 lines. The tabs (Events, Gallery, Menu, Settings) should be broken down into separate components.
+
+**key api endpoints**
+-  (POST)
+-  (GET)
+-  (GET, POST, DELETE)
+-  (POST)
+-  (GET, POST, PUT, DELETE)
+
+**Critical Info for New Agent**
+- The user relies heavily on the provided ZIP files ( and ) to deploy the app manually on their server. **Always update these ZIPs** using bash commands after making stable file changes.
+- The user wants  and its PDF outputs strictly in French.
+-  was added to the frontend. Ensure it isn't broken by the French text translations (e.g., special characters like é, à, ç).
+
+**documents and test reports created in this job**
+- 
+- 
+
+**Last 10 User Messages and any pending HUMAN messages**
+1. **Request**: Translate the event page and the generated PDFs to French. (Status: IN PROGRESS - file edited, testing/ZIP update pending)
+2. **Clarification**: Pointed out that  installation was missing from instructions. (Status: Addressed by agent).
+3. **Request**: Show the directory paths for the installation files. (Status: Completed)
+4. **Request**: Add password validation for the event organizer, restrict guests from editing orders after submission, and split PDFs (Full for organizer, Summary for Kitchen). Provide updated install files. (Status: Completed)
+5. **Clarification**: Answered questions about Event feature logic (organizer vs guest capabilities, PDF contents). (Status: Completed)
+6. **Request**: Build a new hidden page via link for group events where guests can pick dishes, add notes, and the organizer can generate a PDF. (Status: Completed)
+7. **Request**: Provide a command to clear the DB menu and only use the new script data. (Status: Completed)
+8. **Request**: Provide a command/script to populate the database with real dishes from the live website. (Status: Completed)
+9. **Configuration**: User specified they will use the domain  and have Python 3.11 installed. Asked to update the bash script. (Status: Completed)
+10. **Question**: Asked where the root folder will be installed by the script. (Status: Completed)
+
+**Project Health Check:**
+- Mocked: Email/WhatsApp notifications are not yet integrated. PDFs are currently just downloaded locally by the user.
+
+**3rd Party Integrations**
+- None currently active. (User requested Resend/WhatsApp for later).
+
+**Testing status**
+- Testing agent used after significant changes: YES (Early in session for Gallery), NO (for recent Event Page French translation).
+- Troubleshoot agent used after agent stuck in loop: NO
+- Test files created: 
+- Known regressions: None identified, but PDF generation with French characters needs verification.
+
+**Credentials to test flow:**
+- Admin:  / 
+- Event Page Organizer: Password is created dynamically by the admin when generating a new event.
+
+**What agent forgot to execute**
+- The agent updated  with French translations but **did not** test the frontend to ensure  works with the new strings, nor did they run the bash commands to update  and  with the modified file before handing off.</analysis>

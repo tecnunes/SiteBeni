@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { dismissToasts } from '../fixtures/helpers';
 
-const BASE_URL = 'https://beni-photo-editor.preview.emergentagent.com';
+const BASE_URL = 'https://evento-beni.preview.emergentagent.com';
 
 // Default admin credentials (seeded at startup)
 const ADMIN_EMAIL = 'admin';

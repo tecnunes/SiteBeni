@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { waitForAppReady, dismissToasts } from '../fixtures/helpers';
 
-const BASE_URL = 'https://beni-photo-editor.preview.emergentagent.com';
+const BASE_URL = 'https://evento-beni.preview.emergentagent.com';
 
 test.describe('Core Flows - Navigation & Homepage', () => {
   test.beforeEach(async ({ page }) => {

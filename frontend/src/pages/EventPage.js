@@ -52,7 +52,7 @@ const EventPage = () => {
       setOrdersCount(countRes.data?.count || 0);
     } catch (error) {
       console.error('Error:', error);
-      toast.error('Evento não encontrado');
+      toast.error('Événement non trouvé');
     } finally {
       setLoading(false);
     }
@@ -73,11 +73,11 @@ const EventPage = () => {
       if (response.data.authenticated) {
         setIsOrganizer(true);
         setShowOrganizerLogin(false);
-        toast.success(`Bem-vinda, ${response.data.organizer_name}!`);
+        toast.success(`Bienvenue, ${response.data.organizer_name} !`);
         fetchOrdersAsOrganizer(organizerPassword);
       }
     } catch (error) {
-      toast.error('Senha incorreta');
+      toast.error('Mot de passe incorrect');
     }
   };
 
@@ -98,7 +98,7 @@ const EventPage = () => {
         observation: ''
       }]);
     }
-    toast.success(`${item.name_fr} adicionado!`);
+    toast.success(`${item.name_fr} ajouté !`);
   };
 
   const updateItemQuantity = (itemId, delta) => {
@@ -124,11 +124,11 @@ const EventPage = () => {
 
   const submitOrder = async () => {
     if (!guestName.trim()) {
-      toast.error('Por favor, insira seu nome');
+      toast.error('Veuillez entrer votre nom');
       return;
     }
     if (myOrder.length === 0) {
-      toast.error('Adicione pelo menos um prato');
+      toast.error('Ajoutez au moins un plat');
       return;
     }
 
@@ -138,7 +138,7 @@ const EventPage = () => {
           guest_name: guestName,
           items: myOrder
         });
-        toast.success('Pedido atualizado!');
+        toast.success('Commande mise à jour !');
         setEditingOrderId(null);
         fetchOrdersAsOrganizer(organizerPassword);
       } else {
@@ -146,13 +146,13 @@ const EventPage = () => {
           guest_name: guestName,
           items: myOrder
         });
-        toast.success('Pedido enviado com sucesso!');
+        toast.success('Commande envoyée avec succès !');
         setOrderSubmitted(true);
       }
       setMyOrder([]);
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Erro ao salvar pedido');
+      toast.error(error.response?.data?.detail || 'Erreur lors de l\'enregistrement');
     }
   };
 
@@ -164,14 +164,14 @@ const EventPage = () => {
   };
 
   const deleteOrder = async (orderId) => {
-    if (!window.confirm('Remover este pedido?')) return;
+    if (!window.confirm('Supprimer cette commande ?')) return;
     try {
       await axios.delete(`${API}/events/${linkCode}/orders/${orderId}?password=${encodeURIComponent(organizerPassword)}`);
-      toast.success('Pedido removido');
+      toast.success('Commande supprimée');
       fetchOrdersAsOrganizer(organizerPassword);
       fetchData();
     } catch (error) {
-      toast.error('Erro ao remover');
+      toast.error('Erreur lors de la suppression');
     }
   };
 
@@ -192,16 +192,16 @@ const EventPage = () => {
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Organizador: ${data.event.organizer_name}`, pageWidth / 2, y, { align: 'center' });
+    doc.text(`Organisateur : ${data.event.organizer_name}`, pageWidth / 2, y, { align: 'center' });
     y += 5;
-    doc.text(`Convidados esperados: ${data.event.num_guests} | Pedidos recebidos: ${data.total_guests}`, pageWidth / 2, y, { align: 'center' });
+    doc.text(`Convives attendus : ${data.event.num_guests} | Commandes reçues : ${data.total_guests}`, pageWidth / 2, y, { align: 'center' });
     y += 15;
 
     if (type === 'complete') {
       // Complete version - list all guests with their orders
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text('PEDIDOS POR PESSOA', 14, y);
+      doc.text('COMMANDES PAR PERSONNE', 14, y);
       y += 10;
 
       doc.setFontSize(10);
@@ -219,12 +219,12 @@ const EventPage = () => {
 
         doc.setFont('helvetica', 'normal');
         (order.items || []).forEach(item => {
-          const line = `   • ${item.quantity}x ${item.name_fr} - €${item.price.toFixed(2)}`;
+          const line = `   - ${item.quantity}x ${item.name_fr} - ${item.price.toFixed(2)}€`;
           doc.text(line, 14, y);
           y += 5;
           if (item.observation) {
             doc.setTextColor(100);
-            doc.text(`     Obs: ${item.observation}`, 14, y);
+            doc.text(`     Obs : ${item.observation}`, 14, y);
             doc.setTextColor(0);
             y += 5;
           }
@@ -240,7 +240,7 @@ const EventPage = () => {
       y += 10;
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text('RESUMO TOTAL', 14, y);
+      doc.text('RÉSUMÉ TOTAL', 14, y);
       y += 10;
 
       doc.setFontSize(11);
@@ -263,7 +263,7 @@ const EventPage = () => {
       // Kitchen version - only totals and observations
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text('RESUMO PARA COZINHA', 14, y);
+      doc.text('RÉSUMÉ POUR LA CUISINE', 14, y);
       y += 10;
 
       doc.setFontSize(11);
@@ -284,7 +284,7 @@ const EventPage = () => {
       if (data.observations.length > 0) {
         y += 10;
         doc.setFont('helvetica', 'bold');
-        doc.text('OBSERVAÇÕES:', 14, y);
+        doc.text('OBSERVATIONS :', 14, y);
         y += 8;
 
         doc.setFont('helvetica', 'normal');
@@ -294,7 +294,7 @@ const EventPage = () => {
             doc.addPage();
             y = 20;
           }
-          doc.text(`• ${obs.guest} - ${obs.item}: ${obs.observation}`, 14, y);
+          doc.text(`- ${obs.guest} - ${obs.item} : ${obs.observation}`, 14, y);
           y += 5;
         });
       }
@@ -302,7 +302,7 @@ const EventPage = () => {
 
     // Footer
     doc.setFontSize(8);
-    doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 290);
+    doc.text(`Généré le : ${new Date().toLocaleString('fr-FR')}`, 14, 290);
 
     return doc;
   };
@@ -315,17 +315,17 @@ const EventPage = () => {
 
       // Generate only the complete PDF for the organizer
       const completePDF = generatePDF(data, 'complete');
-      completePDF.save(`${event.name.replace(/\s+/g, '_')}_Pedidos.pdf`);
+      completePDF.save(`${event.name.replace(/\s+/g, '_')}_Commandes.pdf`);
 
       // Generate kitchen PDF (will be sent via email to restaurant later)
       const kitchenPDF = generatePDF(data, 'kitchen');
       // Store kitchen PDF data for email sending (future implementation)
       
-      toast.success('Evento enviado! PDF gerado com sucesso.');
-      toast.info('O PDF da cozinha será enviado ao restaurante por email.');
+      toast.success('Événement envoyé ! PDF généré avec succès.');
+      toast.info('Le résumé pour la cuisine sera envoyé au restaurant par email.');
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Erro ao enviar');
+      toast.error(error.response?.data?.detail || 'Erreur lors de l\'envoi');
     } finally {
       setSending(false);
     }
@@ -343,8 +343,8 @@ const EventPage = () => {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl text-white mb-4">Evento não encontrado</h1>
-          <p className="text-white/50">Verifique o link e tente novamente</p>
+          <h1 className="text-2xl text-white mb-4">Événement non trouvé</h1>
+          <p className="text-white/50">Vérifiez le lien et réessayez</p>
         </div>
       </div>
     );
@@ -362,13 +362,13 @@ const EventPage = () => {
           className="bg-[#121212] border border-[#d4af37]/50 p-8 text-center max-w-md"
         >
           <CheckCircle className="w-16 h-16 text-[#d4af37] mx-auto mb-4" />
-          <h1 className="text-2xl text-white mb-2">Pedido Enviado!</h1>
+          <h1 className="text-2xl text-white mb-2">Commande Envoyée !</h1>
           <p className="text-white/70 mb-6">
-            Obrigado, <span className="text-[#d4af37]">{guestName}</span>! 
-            Seu pedido foi registrado para o evento "{event.name}".
+            Merci, <span className="text-[#d4af37]">{guestName}</span> ! 
+            Votre commande a été enregistrée pour l'événement « {event.name} ».
           </p>
           <p className="text-white/50 text-sm">
-            O organizador receberá seu pedido e enviará ao restaurante quando todos confirmarem.
+            L'organisateur recevra votre commande et l'enverra au restaurant lorsque tous les convives auront confirmé.
           </p>
         </motion.div>
       </div>
@@ -387,11 +387,11 @@ const EventPage = () => {
           <p className="text-[#d4af37] text-xs uppercase tracking-[0.3em] mb-2">BÉNI Restaurant</p>
           <h1 className="font-display text-3xl md:text-4xl text-white mb-2">{event.name}</h1>
           <p className="text-white/50">
-            Organizador: {event.organizer_name} | {ordersCount}/{event.num_guests} pedidos confirmados
+            Organisateur : {event.organizer_name} | {ordersCount}/{event.num_guests} commandes confirmées
           </p>
           {isSent && (
             <div className="mt-4 bg-green-500/20 border border-green-500/50 text-green-400 px-4 py-2 rounded inline-block">
-              ✓ Pedidos já enviados ao restaurante
+              ✓ Commandes déjà envoyées au restaurant
             </div>
           )}
         </motion.div>
@@ -405,7 +405,7 @@ const EventPage = () => {
               className="border-[#d4af37]/50 text-[#d4af37]"
             >
               <Lock className="w-4 h-4 mr-2" />
-              Sou o Organizador
+              Je suis l'organisateur
             </Button>
           </div>
         )}
@@ -419,17 +419,17 @@ const EventPage = () => {
           >
             <h2 className="text-white text-lg mb-4 flex items-center gap-2">
               <Lock className="w-5 h-5 text-[#d4af37]" />
-              Acesso do Organizador
+              Accès Organisateur
             </h2>
             <p className="text-white/50 text-sm mb-4">
-              Insira a senha fornecida pelo restaurante para ver e gerenciar os pedidos.
+              Entrez le mot de passe fourni par le restaurant pour voir et gérer les commandes.
             </p>
             <div className="flex gap-4">
               <Input
                 type="password"
                 value={organizerPassword}
                 onChange={(e) => setOrganizerPassword(e.target.value)}
-                placeholder="Senha do evento..."
+                placeholder="Mot de passe de l'événement..."
                 className="bg-transparent border-white/20 text-white flex-1"
                 onKeyPress={(e) => e.key === 'Enter' && authenticateOrganizer()}
               />
@@ -437,7 +437,7 @@ const EventPage = () => {
                 onClick={authenticateOrganizer}
                 className="bg-[#d4af37] text-black hover:bg-white"
               >
-                Entrar
+                Entrer
               </Button>
             </div>
           </motion.div>
@@ -446,7 +446,7 @@ const EventPage = () => {
         {/* Organizer Badge */}
         {isOrganizer && (
           <div className="bg-[#d4af37]/20 border border-[#d4af37]/50 text-[#d4af37] px-4 py-2 rounded text-center mb-6">
-            ✓ Logado como Organizador - Você pode ver e gerenciar todos os pedidos
+            ✓ Connecté en tant qu'Organisateur - Vous pouvez voir et gérer toutes les commandes
           </div>
         )}
 
@@ -461,13 +461,13 @@ const EventPage = () => {
               >
                 <h2 className="text-white text-lg mb-4 flex items-center gap-2">
                   <User className="w-5 h-5 text-[#d4af37]" />
-                  Qual é o seu nome?
+                  Quel est votre nom ?
                 </h2>
                 <div className="flex gap-4">
                   <Input
                     value={guestName}
                     onChange={(e) => setGuestName(e.target.value)}
-                    placeholder="Digite seu nome..."
+                    placeholder="Entrez votre nom..."
                     className="bg-transparent border-white/20 text-white flex-1"
                     onKeyPress={(e) => e.key === 'Enter' && guestName.trim() && setIsNameSet(true)}
                   />
@@ -475,7 +475,7 @@ const EventPage = () => {
                     onClick={() => guestName.trim() && setIsNameSet(true)}
                     className="bg-[#d4af37] text-black hover:bg-white"
                   >
-                    Continuar
+                    Continuer
                   </Button>
                 </div>
               </motion.div>
@@ -489,7 +489,7 @@ const EventPage = () => {
                 >
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-white text-lg">
-                      Olá, <span className="text-[#d4af37]">{guestName}</span>! Escolha seus pratos:
+                      Bonjour, <span className="text-[#d4af37]">{guestName}</span> ! Choisissez vos plats :
                     </h2>
                     <Button 
                       variant="outline" 
@@ -497,7 +497,7 @@ const EventPage = () => {
                       onClick={() => { setIsNameSet(false); setMyOrder([]); }}
                       className="border-white/20 text-white/50"
                     >
-                      Trocar nome
+                      Changer de nom
                     </Button>
                   </div>
 
@@ -535,7 +535,7 @@ const EventPage = () => {
                                       <div className="flex-1">
                                         <p className="text-white">{item.name_fr}</p>
                                         <p className="text-white/50 text-sm">{item.description_fr}</p>
-                                        <p className="text-[#d4af37] text-sm">€{item.price?.toFixed(2)}</p>
+                                        <p className="text-[#d4af37] text-sm">{item.price?.toFixed(2)}€</p>
                                       </div>
                                       <Button
                                         size="sm"
@@ -565,7 +565,7 @@ const EventPage = () => {
                   >
                     <h2 className="text-white text-lg mb-4 flex items-center gap-2">
                       <ShoppingBag className="w-5 h-5 text-[#d4af37]" />
-                      Meu Pedido
+                      Ma Commande
                     </h2>
 
                     <div className="space-y-4">
@@ -574,7 +574,7 @@ const EventPage = () => {
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-white">{item.name_fr}</p>
-                              <p className="text-[#d4af37] text-sm">€{item.price?.toFixed(2)} cada</p>
+                              <p className="text-[#d4af37] text-sm">{item.price?.toFixed(2)}€ chacun</p>
                             </div>
                             <div className="flex items-center gap-2">
                               <Button
@@ -607,7 +607,7 @@ const EventPage = () => {
                           <Textarea
                             value={item.observation || ''}
                             onChange={(e) => updateItemObservation(item.item_id, e.target.value)}
-                            placeholder="Observações (ex: sem cebola, ponto da carne...)"
+                            placeholder="Observations (ex : sans oignon, cuisson de la viande...)"
                             className="bg-transparent border-white/20 text-white text-sm"
                             rows={2}
                           />
@@ -617,15 +617,15 @@ const EventPage = () => {
 
                     <div className="mt-6 flex justify-between items-center">
                       <p className="text-white">
-                        Total: <span className="text-[#d4af37] font-bold">
-                          €{myOrder.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2)}
+                        Total : <span className="text-[#d4af37] font-bold">
+                          {myOrder.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2)}€
                         </span>
                       </p>
                       <Button
                         onClick={submitOrder}
                         className="bg-[#d4af37] text-black hover:bg-white"
                       >
-                        Enviar Meu Pedido
+                        Envoyer Ma Commande
                       </Button>
                     </div>
                   </motion.div>
@@ -643,11 +643,11 @@ const EventPage = () => {
             className="bg-[#121212] border border-white/10 p-6"
           >
             <h2 className="text-white text-lg mb-4">
-              Pedidos Confirmados ({orders.length}/{event.num_guests})
+              Commandes Confirmées ({orders.length}/{event.num_guests})
             </h2>
 
             {orders.length === 0 ? (
-              <p className="text-white/50 text-center py-8">Nenhum pedido ainda</p>
+              <p className="text-white/50 text-center py-8">Aucune commande pour le moment</p>
             ) : (
               <div className="space-y-4">
                 {orders.map(order => (
@@ -678,7 +678,7 @@ const EventPage = () => {
                     <ul className="text-white/70 text-sm space-y-1">
                       {(order.items || []).map((item, idx) => (
                         <li key={idx}>
-                          • {item.quantity}x {item.name_fr}
+                          - {item.quantity}x {item.name_fr}
                           {item.observation && (
                             <span className="text-[#d4af37] text-xs ml-2">({item.observation})</span>
                           )}
@@ -697,7 +697,7 @@ const EventPage = () => {
                 animate={{ opacity: 1 }}
                 className="mt-6 pt-6 border-t border-white/10"
               >
-                <h3 className="text-white mb-4">Editando pedido de: {guestName}</h3>
+                <h3 className="text-white mb-4">Modification de la commande de : {guestName}</h3>
                 
                 {/* Categories for editing */}
                 <div className="space-y-2 mb-4">
@@ -720,7 +720,7 @@ const EventPage = () => {
                           <div className="p-3 pt-0 space-y-1">
                             {categoryItems.map(item => (
                               <div key={item.id} className="flex items-center justify-between p-2 bg-white/5 text-sm">
-                                <span className="text-white">{item.name_fr} - €{item.price?.toFixed(2)}</span>
+                                <span className="text-white">{item.name_fr} - {item.price?.toFixed(2)}€</span>
                                 <Button size="sm" onClick={() => addItemToOrder(item)} className="bg-[#d4af37] text-black h-6 text-xs">
                                   <Plus className="w-3 h-3" />
                                 </Button>
@@ -755,10 +755,10 @@ const EventPage = () => {
 
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => { setEditingOrderId(null); setMyOrder([]); }} className="border-white/20 text-white/70">
-                    Cancelar
+                    Annuler
                   </Button>
                   <Button onClick={submitOrder} className="bg-[#d4af37] text-black">
-                    Salvar Alterações
+                    Enregistrer les Modifications
                   </Button>
                 </div>
               </motion.div>
@@ -773,10 +773,10 @@ const EventPage = () => {
                   className="w-full bg-[#d4af37] text-black hover:bg-white py-6 text-lg"
                 >
                   {sending ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Send className="w-5 h-5 mr-2" />}
-                  Enviar Pedidos ao Restaurante
+                  Envoyer les Commandes au Restaurant
                 </Button>
                 <p className="text-white/50 text-sm text-center mt-2">
-                  Você receberá o PDF com todos os pedidos. O resumo da cozinha será enviado ao restaurante.
+                  Vous recevrez le PDF avec toutes les commandes. Le résumé pour la cuisine sera envoyé au restaurant.
                 </p>
               </div>
             )}
@@ -787,7 +787,7 @@ const EventPage = () => {
         {!isOrganizer && !isSent && isNameSet && myOrder.length === 0 && (
           <div className="bg-[#121212] border border-white/10 p-6 text-center">
             <p className="text-white/50">
-              {ordersCount} de {event.num_guests} convidados já confirmaram seus pedidos.
+              {ordersCount} sur {event.num_guests} convives ont déjà confirmé leur commande.
             </p>
           </div>
         )}
