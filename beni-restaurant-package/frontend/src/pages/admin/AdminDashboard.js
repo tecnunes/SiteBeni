@@ -701,45 +701,52 @@ const AdminDashboard = () => {
                       </TabsList>
 
                       {menuCategories.map(category => (
-                        <TabsContent key={category.id} value={category.slug} className="space-y-4">
-                          <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-white text-lg">{category.name_fr}</h3>
-                            <Button onClick={() => addMenuItem(category.slug)} className="bg-[#d4af37] text-black hover:bg-white">
-                              <Plus className="w-4 h-4 mr-2" />Ajouter
+                        <TabsContent key={category.id} value={category.slug} className="space-y-2">
+                          <div className="flex justify-between items-center mb-2">
+                            <h3 className="text-white text-sm font-medium">{category.name_fr}</h3>
+                            <Button size="sm" onClick={() => addMenuItem(category.slug)} className="bg-[#d4af37] text-black hover:bg-white h-7 text-xs">
+                              <Plus className="w-3 h-3 mr-1" />Ajouter
                             </Button>
                           </div>
 
                           {menuItems.filter(item => item.category === category.slug).map(item => (
-                            <div key={item.id} className="bg-[#121212] border border-white/10 p-6 space-y-4">
-                              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <Input value={item.name_fr} onChange={(e) => updateMenuItem(item.id, 'name_fr', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Nom (FR)" />
-                                <Input value={item.name_en} onChange={(e) => updateMenuItem(item.id, 'name_en', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Name (EN)" />
-                                <Input value={item.name_pt} onChange={(e) => updateMenuItem(item.id, 'name_pt', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Nome (PT)" />
-                                <Input type="number" step="0.01" value={item.price} onChange={(e) => updateMenuItem(item.id, 'price', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Prix (€)" />
+                            <div key={item.id} className="bg-[#121212] border border-white/10 p-3 space-y-2">
+                              <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                                <Input value={item.name_fr} onChange={(e) => updateMenuItem(item.id, 'name_fr', e.target.value)} className="bg-transparent border-white/20 text-white text-sm h-8" placeholder="Nom (FR)" />
+                                <Input value={item.name_en} onChange={(e) => updateMenuItem(item.id, 'name_en', e.target.value)} className="bg-transparent border-white/20 text-white text-sm h-8" placeholder="Name (EN)" />
+                                <Input value={item.name_pt} onChange={(e) => updateMenuItem(item.id, 'name_pt', e.target.value)} className="bg-transparent border-white/20 text-white text-sm h-8" placeholder="Nome (PT)" />
+                                <Input type="number" step="0.01" value={item.price} onChange={(e) => updateMenuItem(item.id, 'price', e.target.value)} className="bg-transparent border-white/20 text-white text-sm h-8" placeholder="Prix €" />
+                                <select
+                                  value={item.category}
+                                  onChange={(e) => updateMenuItem(item.id, 'category', e.target.value)}
+                                  className="bg-transparent border border-white/20 text-white text-sm h-8 rounded-md px-2"
+                                >
+                                  {menuCategories.map(cat => (
+                                    <option key={cat.slug} value={cat.slug} className="bg-[#121212]">{cat.name_fr}</option>
+                                  ))}
+                                </select>
                               </div>
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <Input value={item.description_fr || ''} onChange={(e) => updateMenuItem(item.id, 'description_fr', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Description (FR)" />
-                                <Input value={item.description_en || ''} onChange={(e) => updateMenuItem(item.id, 'description_en', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Description (EN)" />
-                                <Input value={item.description_pt || ''} onChange={(e) => updateMenuItem(item.id, 'description_pt', e.target.value)} className="bg-transparent border-white/20 text-white" placeholder="Descrição (PT)" />
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                <Input value={item.description_fr || ''} onChange={(e) => updateMenuItem(item.id, 'description_fr', e.target.value)} className="bg-transparent border-white/20 text-white text-xs h-7" placeholder="Description (FR)" />
+                                <Input value={item.description_en || ''} onChange={(e) => updateMenuItem(item.id, 'description_en', e.target.value)} className="bg-transparent border-white/20 text-white text-xs h-7" placeholder="Description (EN)" />
+                                <Input value={item.description_pt || ''} onChange={(e) => updateMenuItem(item.id, 'description_pt', e.target.value)} className="bg-transparent border-white/20 text-white text-xs h-7" placeholder="Descrição (PT)" />
                               </div>
-                              <div className="flex gap-4">
+                              <div className="flex items-center gap-2">
                                 <div className="flex-1">
-                                  <ImageUpload value={item.image_url || ''} onChange={(url) => updateMenuItem(item.id, 'image_url', url)} />
+                                  <Input value={item.image_url || ''} onChange={(e) => updateMenuItem(item.id, 'image_url', e.target.value)} className="bg-transparent border-white/20 text-white text-xs h-7" placeholder="URL da imagem (opcional)" />
                                 </div>
-                              </div>
-                              <div className="flex justify-end gap-2">
-                                <Button variant="outline" onClick={() => deleteMenuItem(item.id, item.isNew)} className="border-red-500 text-red-500 hover:bg-red-500/10">
-                                  <Trash2 className="w-4 h-4 mr-2" />Supprimer
+                                <Button size="sm" variant="outline" onClick={() => deleteMenuItem(item.id, item.isNew)} className="border-red-500/50 text-red-500 h-7 w-7 p-0">
+                                  <Trash2 className="w-3 h-3" />
                                 </Button>
-                                <Button onClick={() => saveMenuItem(item)} disabled={saving} className="bg-[#d4af37] text-black hover:bg-white">
-                                  <Save className="w-4 h-4 mr-2" />Sauvegarder
+                                <Button size="sm" onClick={() => saveMenuItem(item)} disabled={saving} className="bg-[#d4af37] text-black hover:bg-white h-7 text-xs px-3">
+                                  <Save className="w-3 h-3 mr-1" />Salvar
                                 </Button>
                               </div>
                             </div>
                           ))}
 
                           {menuItems.filter(item => item.category === category.slug).length === 0 && (
-                            <p className="text-white/30 text-center py-8">Aucun item dans cette catégorie</p>
+                            <p className="text-white/30 text-center py-4 text-sm">Aucun item dans cette catégorie</p>
                           )}
                         </TabsContent>
                       ))}
